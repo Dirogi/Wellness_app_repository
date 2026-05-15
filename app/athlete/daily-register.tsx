@@ -1,0 +1,820 @@
+import { useMemo, useState } from "react";
+import { Pressable, Text, TextInput, View } from "react-native";
+import AthleteLayout from "../../src/components/layout/AthleteLayout";
+import AppButton from "../../src/components/ui/AppButton";
+import AppCard from "../../src/components/ui/AppCard";
+import AppInput from "../../src/components/ui/AppInput";
+import AppSlider from "../../src/components/ui/AppSlider";
+import SectionTitle from "../../src/components/ui/SectionTitle";
+
+type TabKey =
+  | "training"
+  | "sleep"
+  | "heart"
+  | "self"
+  | "discomfort"
+  | "cycle";
+
+const tabs: { key: TabKey; label: string }[] = [
+  { key: "training", label: "Entrenamiento" },
+  { key: "sleep", label: "Sueño" },
+  { key: "heart", label: "Frecuencia Cardiaca" },
+  { key: "self", label: "Autopercepción" },
+  { key: "discomfort", label: "Molestias" },
+  { key: "cycle", label: "Ciclo" },
+];
+
+const bodyAreaOptions = [
+  "Cuello",
+  "Hombro",
+  "Espalda",
+  "Codo",
+  "Muñeca",
+  "Cadera",
+  "Rodilla",
+  "Tobillo",
+  "Pie",
+];
+
+export default function DailyRegisterScreen() {
+  const [activeTab, setActiveTab] = useState<TabKey>("training");
+  const [completedTabs, setCompletedTabs] = useState<TabKey[]>([]);
+
+  const [trainingType, setTrainingType] = useState("");
+  const [duration, setDuration] = useState("");
+  const [intensity, setIntensity] = useState(6);
+  const [trainingNotes, setTrainingNotes] = useState("");
+
+  const [sleepQuality, setSleepQuality] = useState(7);
+  const [bedHour, setBedHour] = useState("");
+  const [bedMinute, setBedMinute] = useState("");
+  const [wakeHour, setWakeHour] = useState("");
+  const [wakeMinute, setWakeMinute] = useState("");
+  const [wakeups, setWakeups] = useState("");
+  const [sleepNotes, setSleepNotes] = useState("");
+
+  const [hrv, setHrv] = useState("");
+  const [hrvHour, setHrvHour] = useState("");
+  const [hrvMinute, setHrvMinute] = useState("");
+  const [measurementMethod, setMeasurementMethod] = useState("");
+
+  const [restingHr, setRestingHr] = useState("");
+  const [restingHrHour, setRestingHrHour] = useState("");
+  const [restingHrMinute, setRestingHrMinute] = useState("");
+  const [heartNotes, setHeartNotes] = useState("");
+
+  const [motivation, setMotivation] = useState(7);
+  const [stress, setStress] = useState(4);
+  const [irritability, setIrritability] = useState(3);
+  const [physicalFatigue, setPhysicalFatigue] = useState(3);
+  const [mentalFatigue, setMentalFatigue] = useState(5);
+  const [recoveryFeeling, setRecoveryFeeling] = useState(5);
+  const [readinessToTrain, setReadinessToTrain] = useState(4);
+  const [energyLevel, setEnergyLevel] = useState(7);
+  const [selfNotes, setSelfNotes] = useState("");
+
+
+  const [hasPain, setHasPain] = useState(false);
+  const [painIntensity, setPainIntensity] = useState(1);
+  const [selectedBodyAreas, setSelectedBodyAreas] = useState<string[]>([]);
+  const [discomfortType, setDiscomfortType] = useState("");
+  const [discomfortNotes, setDiscomfortNotes] = useState("");
+
+  const [activeMenstruation, setActiveMenstruation] = useState(false);
+  const [menstrualPain, setMenstrualPain] = useState(1);
+
+  const trainingLoad = useMemo(() => {
+    const minutes = Number(duration);
+    if (!minutes || minutes <= 0) return 0;
+    return minutes * intensity;
+  }, [duration, intensity]);
+
+  const moodScore = useMemo(() => {
+    const stressInv = 11 - stress;
+    const irritabilityInv = 11 - irritability;
+    return Math.round(
+      0.4 * motivation + 0.35 * stressInv + 0.25 * irritabilityInv
+    );
+  }, [motivation, stress, irritability]);
+
+  const fatigueScore = useMemo(() => {
+    return Math.round((physicalFatigue + mentalFatigue) / 2);
+  }, [physicalFatigue, mentalFatigue]);
+
+  const calculatedSleepHours = useMemo(() => {
+    if (!bedHour || !bedMinute || !wakeHour || !wakeMinute) return "-";
+
+    const bHour = Number(bedHour);
+    const bMinute = Number(bedMinute);
+    const wHour = Number(wakeHour);
+    const wMinute = Number(wakeMinute);
+
+    if (
+      Number.isNaN(bHour) ||
+      Number.isNaN(bMinute) ||
+      Number.isNaN(wHour) ||
+      Number.isNaN(wMinute) ||
+      bHour < 0 ||
+      bHour > 23 ||
+      wHour < 0 ||
+      wHour > 23 ||
+      bMinute < 0 ||
+      bMinute > 59 ||
+      wMinute < 0 ||
+      wMinute > 59
+    ) {
+      return "-";
+    }
+
+    let bedTotal = bHour * 60 + bMinute;
+    let wakeTotal = wHour * 60 + wMinute;
+
+    if (wakeTotal <= bedTotal) {
+      wakeTotal += 24 * 60;
+    }
+
+    const diffMinutes = wakeTotal - bedTotal;
+    return (diffMinutes / 60).toFixed(1);
+  }, [bedHour, bedMinute, wakeHour, wakeMinute]);
+
+  const progress = completedTabs.length;
+  const progressPercent = `${progress}/6`;
+
+  function markCompleted() {
+    if (!completedTabs.includes(activeTab)) {
+      setCompletedTabs([...completedTabs, activeTab]);
+    }
+  }
+
+  return (
+    <AthleteLayout title="Registro diario">
+      <AppCard className="mb-5">
+        <View className="flex-row justify-between mb-2">
+          <Text className="font-semibold text-gray-700">
+            Progreso del registro
+          </Text>
+          <Text className="font-bold text-gray-900">{progressPercent}</Text>
+        </View>
+
+        <View className="h-3 bg-gray-200 rounded-full overflow-hidden">
+          <View
+            className="h-3 bg-blue-600 rounded-full"
+            style={{ width: `${(progress / 6) * 100}%` }}
+          />
+        </View>
+      </AppCard>
+
+      <View className="flex-row flex-wrap gap-2 mb-5">
+        {tabs.map((tab) => {
+          const isActive = activeTab === tab.key;
+          const isCompleted = completedTabs.includes(tab.key);
+
+          return (
+            <Pressable
+              key={tab.key}
+              onPress={() => setActiveTab(tab.key)}
+              className={`px-3 py-2 rounded-full border ${
+                isActive
+                  ? "bg-blue-600 border-blue-600"
+                  : "bg-white border-gray-200"
+              }`}
+            >
+              <Text
+                className={`text-xs font-semibold ${
+                  isActive ? "text-white" : "text-gray-700"
+                }`}
+              >
+                {tab.label}
+                {isCompleted ? " ✓" : ""}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
+      <AppCard>
+        {activeTab === "training" && (
+          <View>
+            <SectionTitle title="Entrenamiento" />
+
+            <AppInput
+              label="Tipo de entrenamiento"
+              value={trainingType}
+              onChangeText={setTrainingType}
+              placeholder="Fuerza, carrera, movilidad..."
+            />
+
+            <AppInput
+              label="Duración (minutos)"
+              value={duration}
+              onChangeText={setDuration}
+              placeholder="Ej. 60"
+              keyboardType="numeric"
+            />
+
+            <AppSlider
+                label="Intensidad percibida"
+                value={intensity}
+                onChange={setIntensity}
+            />
+
+            <View className="mb-4">
+              <Text className="text-sm font-medium text-gray-700 mb-2">
+                Carga de entrenamiento
+              </Text>
+              <View className="h-12 bg-blue-50 rounded-2xl justify-center px-4">
+                <Text className="text-blue-700 font-bold">
+                  {trainingLoad} AU
+                </Text>
+              </View>
+            </View>
+
+            <NotesInput
+              label="Notas"
+              value={trainingNotes}
+              onChangeText={setTrainingNotes}
+              placeholder="Observaciones sobre el entrenamiento"
+            />
+          </View>
+        )}
+
+        {activeTab === "sleep" && (
+          <View>
+            <SectionTitle title="Sueño" />
+
+            <AppSlider
+              label="Calidad del sueño"
+              value={sleepQuality}
+              onChange={setSleepQuality}
+            />
+
+            <View className="flex-row gap-3 mb-4">
+              <View className="flex-1">
+                <Text className="text-sm font-medium text-gray-700 mb-2">
+                  Hora de acostarse
+                </Text>
+
+                <View className="flex-row items-center gap-2">
+                  <View className="flex-1">
+                    <AppInput
+                      label=""
+                      value={bedHour}
+                      onChangeText={setBedHour}
+                      placeholder="23"
+                      keyboardType="numeric"
+                    />
+                  </View>
+
+                  <Text className="text-xl font-bold text-gray-500 mb-4">:</Text>
+
+                  <View className="flex-1">
+                    <AppInput
+                      label=""
+                      value={bedMinute}
+                      onChangeText={setBedMinute}
+                      placeholder="30"
+                      keyboardType="numeric"
+                    />
+                  </View>
+                </View>
+              </View>
+
+              <View className="flex-1">
+                <Text className="text-sm font-medium text-gray-700 mb-2">
+                  Hora de levantarse
+                </Text>
+
+                <View className="flex-row items-center gap-2">
+                  <View className="flex-1">
+                    <AppInput
+                      label=""
+                      value={wakeHour}
+                      onChangeText={setWakeHour}
+                      placeholder="07"
+                      keyboardType="numeric"
+                    />
+                  </View>
+
+                  <Text className="text-xl font-bold text-gray-500 mb-4">:</Text>
+
+                  <View className="flex-1">
+                    <AppInput
+                      label=""
+                      value={wakeMinute}
+                      onChangeText={setWakeMinute}
+                      placeholder="30"
+                      keyboardType="numeric"
+                    />
+                  </View>
+                </View>
+              </View>
+            </View>
+
+            <View className="mb-4">
+              <Text className="text-sm font-medium text-gray-700 mb-2">
+                Horas de sueño
+              </Text>
+
+              <View className="h-12 bg-blue-50 rounded-2xl justify-center px-4">
+                <Text className="text-blue-700 font-bold">
+                  {calculatedSleepHours} h
+                </Text>
+              </View>
+            </View>
+
+            <AppInput
+              label="Número de despertares"
+              value={wakeups}
+              onChangeText={setWakeups}
+              placeholder="Ej. 2"
+              keyboardType="numeric"
+            />
+
+            <NotesInput
+              label="Notas"
+              value={sleepNotes}
+              onChangeText={setSleepNotes}
+              placeholder="Observaciones sobre el sueño"
+            />
+          </View>
+        )}
+
+        {activeTab === "heart" && (
+          <View>
+            <SectionTitle title="Frecuencia cardiaca" />
+
+            <View className="bg-slate-100 rounded-2xl p-4 mb-4">
+              <Text className="text-base font-bold text-gray-900 mb-3">
+                Variabilidad de la frecuencia cardiaca
+              </Text>
+
+              <AppInput
+                label="HRV"
+                value={hrv}
+                onChangeText={setHrv}
+                placeholder="Ej. 72"
+                keyboardType="numeric"
+              />
+
+              <TimeInputGroup
+                label="Hora de medición"
+                hour={hrvHour}
+                minute={hrvMinute}
+                onChangeHour={setHrvHour}
+                onChangeMinute={setHrvMinute}
+              />
+
+              <AppInput
+                label="Método de medición"
+                value={measurementMethod}
+                onChangeText={setMeasurementMethod}
+                placeholder="Ej. pulsómetro, reloj, banda..."
+              />
+            </View>
+
+            <View className="bg-slate-100 rounded-2xl p-4 mb-4">
+              <Text className="text-base font-bold text-gray-900 mb-3">
+                Frecuencia cardiaca en reposo
+              </Text>
+
+              <AppInput
+                label="FC en reposo"
+                value={restingHr}
+                onChangeText={setRestingHr}
+                placeholder="Ej. 48"
+                keyboardType="numeric"
+              />
+
+              <TimeInputGroup
+                label="Hora de medición"
+                hour={restingHrHour}
+                minute={restingHrMinute}
+                onChangeHour={setRestingHrHour}
+                onChangeMinute={setRestingHrMinute}
+              />
+            </View>
+
+            <NotesInput
+              label="Notas"
+              value={heartNotes}
+              onChangeText={setHeartNotes}
+              placeholder="Observaciones sobre la frecuencia cardiaca"
+            />
+          </View>
+        )}
+
+        {activeTab === "self" && (
+          <View>
+            <SectionTitle title="Autopercepción" />
+
+            <View className="bg-slate-100 rounded-2xl p-4 mb-4">
+              <Text className="text-base font-bold text-gray-900 mb-4">
+                Estado de ánimo
+              </Text>
+
+              <AppSlider
+                label="Motivación"
+                value={motivation}
+                onChange={setMotivation}
+              />
+
+              <AppSlider
+                label="Estrés"
+                value={stress}
+                onChange={setStress}
+              />
+
+              <AppSlider
+                label="Irritabilidad"
+                value={irritability}
+                onChange={setIrritability}
+              />
+
+              <View className="bg-emerald-50 rounded-2xl p-4">
+                <Text className="text-emerald-700 font-semibold">
+                  Estado de ánimo general
+                </Text>
+                <Text className="text-3xl font-bold text-emerald-700 mt-1">
+                  {moodScore}/10
+                </Text>
+              </View>
+            </View>
+
+            <View className="bg-slate-100 rounded-2xl p-4 mb-4">
+              <Text className="text-base font-bold text-gray-900 mb-4">
+                Fatiga percibida
+              </Text>
+
+              <AppSlider
+                label="Fatiga física"
+                value={physicalFatigue}
+                onChange={setPhysicalFatigue}
+              />
+
+              <AppSlider
+                label="Fatiga mental"
+                value={mentalFatigue}
+                onChange={setMentalFatigue}
+              />
+
+              <View className="bg-amber-50 rounded-2xl p-4">
+                <Text className="text-amber-700 font-semibold">
+                  Fatiga general
+                </Text>
+                <Text className="text-3xl font-bold text-amber-700 mt-1">
+                  {fatigueScore}/10
+                </Text>
+              </View>
+            </View>
+
+            <View className="bg-slate-100 rounded-2xl p-4 mb-4">
+              <Text className="text-base font-bold text-gray-900 mb-4">
+                Recuperación percibida
+              </Text>
+
+              <AppSlider
+                label="Sensación de recuperación"
+                value={recoveryFeeling}
+                onChange={setRecoveryFeeling}
+              />
+
+              <IconScaleSelector
+                label="Preparación para entrenar"
+                value={readinessToTrain}
+                max={5}
+                icon="🏋️"
+                onChange={setReadinessToTrain}
+              />
+
+              <IconScaleSelector
+                label="Nivel de energía"
+                value={energyLevel}
+                max={10}
+                icon="⚡"
+                onChange={setEnergyLevel}
+              />
+            </View>
+
+            <NotesInput
+              label="Notas"
+              value={selfNotes}
+              onChangeText={setSelfNotes}
+              placeholder="Observaciones sobre el ánimo, fatiga o recuperación"
+            />
+          </View>
+        )}
+
+        {activeTab === "discomfort" && (
+          <View>
+            <SectionTitle title="Molestias" />
+
+            <ToggleOption
+              label="¿Hay dolor?"
+              value={hasPain}
+              onChange={setHasPain}
+            />
+
+            {hasPain && (
+              <>
+                <AppSlider
+                  label="Intensidad del dolor"
+                  value={painIntensity}
+                  onChange={setPainIntensity}
+                />
+
+                <MultiSelectChips
+                  label="Zona corporal"
+                  options={bodyAreaOptions}
+                  selectedOptions={selectedBodyAreas}
+                  onChange={setSelectedBodyAreas}
+                />
+
+                <AppInput
+                  label="Tipo de molestia"
+                  value={discomfortType}
+                  onChangeText={setDiscomfortType}
+                  placeholder="Ej. pinchazo, sobrecarga, rigidez..."
+                />
+
+                <NotesInput
+                  label="Notas"
+                  value={discomfortNotes}
+                  onChangeText={setDiscomfortNotes}
+                  placeholder="Observaciones sobre los dolores o molestias"
+                />
+              </>
+            )}
+          </View>
+        )}
+
+        {activeTab === "cycle" && (
+          <View>
+            <SectionTitle title="Ciclo menstrual" />
+
+            <ToggleOption
+              label="¿Menstruación activa?"
+              value={activeMenstruation}
+              onChange={setActiveMenstruation}
+            />
+
+            {activeMenstruation && (
+              <AppSlider
+                label="Dolor menstrual"
+                value={menstrualPain}
+                onChange={setMenstrualPain}
+              />
+            )}
+          </View>
+        )}
+
+        <AppButton title="Marcar como completado" onPress={markCompleted} />
+      </AppCard>
+    </AthleteLayout>
+  );
+}
+
+/*function ScaleSelector({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <View className="mb-5">
+      <Text className="text-sm font-medium text-gray-700 mb-3">{label}</Text>
+
+      <View className="flex-row flex-wrap gap-2">
+        {Array.from({ length: 10 }, (_, index) => index + 1).map((number) => (
+          <Pressable
+            key={number}
+            onPress={() => onChange(number)}
+            className={`w-10 h-10 rounded-full items-center justify-center ${
+              value === number ? "bg-blue-600" : "bg-gray-100"
+            }`}
+          >
+            <Text
+              className={`font-semibold ${
+                value === number ? "text-white" : "text-gray-700"
+              }`}
+            >
+              {number}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+    </View>
+  );
+}*/
+
+function ToggleOption({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: boolean;
+  onChange: (value: boolean) => void;
+}) {
+  return (
+    <View className="mb-5">
+      <Text className="text-sm font-medium text-gray-700 mb-2">{label}</Text>
+
+      <View className="flex-row gap-3">
+        <Pressable
+          onPress={() => onChange(true)}
+          className={`flex-1 h-12 rounded-2xl items-center justify-center ${
+            value ? "bg-blue-600" : "bg-gray-100"
+          }`}
+        >
+          <Text
+            className={`font-semibold ${value ? "text-white" : "text-gray-700"}`}
+          >
+            Sí
+          </Text>
+        </Pressable>
+
+        <Pressable
+          onPress={() => onChange(false)}
+          className={`flex-1 h-12 rounded-2xl items-center justify-center ${
+            !value ? "bg-blue-600" : "bg-gray-100"
+          }`}
+        >
+          <Text
+            className={`font-semibold ${
+              !value ? "text-white" : "text-gray-700"
+            }`}
+          >
+            No
+          </Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+function NotesInput({
+  label,
+  value,
+  onChangeText,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChangeText: (text: string) => void;
+  placeholder?: string;
+}) {
+  return (
+    <View className="mb-4">
+      <Text className="text-sm font-medium text-gray-700 mb-2">{label}</Text>
+
+      <TextInput
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        multiline
+        className="min-h-[90px] bg-white border border-gray-200 rounded-2xl px-4 py-3 text-gray-900"
+        placeholderTextColor="#9CA3AF"
+        textAlignVertical="top"
+      />
+    </View>
+  );
+}
+
+function TimeInputGroup({
+  label,
+  hour,
+  minute,
+  onChangeHour,
+  onChangeMinute,
+}: {
+  label: string;
+  hour: string;
+  minute: string;
+  onChangeHour: (value: string) => void;
+  onChangeMinute: (value: string) => void;
+}) {
+  return (
+    <View className="mb-4">
+      <Text className="text-sm font-medium text-gray-700 mb-2">{label}</Text>
+
+      <View className="flex-row items-center gap-2">
+        <View className="flex-1">
+          <AppInput
+            label=""
+            value={hour}
+            onChangeText={onChangeHour}
+            placeholder="HH"
+            keyboardType="numeric"
+          />
+        </View>
+
+        <Text className="text-xl font-bold text-gray-500 mb-4">:</Text>
+
+        <View className="flex-1">
+          <AppInput
+            label=""
+            value={minute}
+            onChangeText={onChangeMinute}
+            placeholder="MM"
+            keyboardType="numeric"
+          />
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function IconScaleSelector({
+  label,
+  value,
+  max,
+  icon,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  max: number;
+  icon: string;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <View className="mb-5">
+      <View className="flex-row justify-between mb-3">
+        <Text className="text-sm font-medium text-gray-700">{label}</Text>
+        <Text className="text-sm font-bold text-blue-600">
+          {value}/{max}
+        </Text>
+      </View>
+
+      <View className="flex-row flex-wrap gap-2">
+        {Array.from({ length: max }, (_, index) => index + 1).map((number) => (
+          <Pressable
+            key={number}
+            onPress={() => onChange(number)}
+            className="w-9 h-9 items-center justify-center"
+            style={{
+              opacity: number <= value ? 1 : 0.25,
+            }}
+          >
+            <Text className="text-2xl">{icon}</Text>
+          </Pressable>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+function MultiSelectChips({
+  label,
+  options,
+  selectedOptions,
+  onChange,
+}: {
+  label: string;
+  options: string[];
+  selectedOptions: string[];
+  onChange: (values: string[]) => void;
+}) {
+  function toggleOption(option: string) {
+    if (selectedOptions.includes(option)) {
+      onChange(selectedOptions.filter((item) => item !== option));
+    } else {
+      onChange([...selectedOptions, option]);
+    }
+  }
+
+  return (
+    <View className="mb-5">
+      <Text className="text-sm font-medium text-gray-700 mb-3">{label}</Text>
+
+      <View className="flex-row flex-wrap gap-2">
+        {options.map((option) => {
+          const isSelected = selectedOptions.includes(option);
+
+          return (
+            <Pressable
+              key={option}
+              onPress={() => toggleOption(option)}
+              className={`px-4 py-2 rounded-full border ${
+                isSelected
+                  ? "bg-blue-600 border-blue-600"
+                  : "bg-white border-gray-200"
+              }`}
+            >
+              <Text
+                className={`text-sm font-medium ${
+                  isSelected ? "text-white" : "text-gray-700"
+                }`}
+              >
+                {option}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
