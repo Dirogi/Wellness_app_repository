@@ -21,7 +21,7 @@ const tabs: { key: TabKey; label: string }[] = [
   { key: "heart", label: "Frecuencia Cardiaca" },
   { key: "self", label: "Autopercepción" },
   { key: "discomfort", label: "Molestias" },
-  { key: "cycle", label: "Ciclo" },
+  { key: "cycle", label: "Ciclo Menstrual" },
 ];
 
 const bodyAreaOptions = [
@@ -34,6 +34,26 @@ const bodyAreaOptions = [
   "Rodilla",
   "Tobillo",
   "Pie",
+];
+
+const physicalSymptomOptions = [
+  "Dolor abdominal",
+  "Dolor lumbar",
+  "Dolor de cabeza",
+  "Hinchazón",
+  "Náuseas",
+  "Calambres",
+  "Sensibilidad mamaria",
+];
+
+const emotionalSymptomOptions = [
+  "Irritabilidad",
+  "Ansiedad",
+  "Tristeza",
+  "Cambios de humor",
+  "Baja motivación",
+  "Estrés",
+  "Cansancio emocional",
 ];
 
 export default function DailyRegisterScreen() {
@@ -81,7 +101,11 @@ export default function DailyRegisterScreen() {
   const [discomfortNotes, setDiscomfortNotes] = useState("");
 
   const [activeMenstruation, setActiveMenstruation] = useState(false);
+  const [bleedingLevel, setBleedingLevel] = useState(1);
   const [menstrualPain, setMenstrualPain] = useState(1);
+  const [selectedPhysicalSymptoms, setSelectedPhysicalSymptoms] = useState<string[]>([]);
+  const [selectedEmotionalSymptoms, setSelectedEmotionalSymptoms] = useState<string[]>([]);
+  const [menstrualNotes, setMenstrualNotes] = useState("");
 
   const trainingLoad = useMemo(() => {
     const minutes = Number(duration);
@@ -558,11 +582,40 @@ export default function DailyRegisterScreen() {
             />
 
             {activeMenstruation && (
-              <AppSlider
-                label="Dolor menstrual"
-                value={menstrualPain}
-                onChange={setMenstrualPain}
-              />
+              <>
+                <AppSlider
+                  label="Nivel de sangrado"
+                  value={bleedingLevel}
+                  onChange={setBleedingLevel}
+                />
+
+                <AppSlider
+                  label="Dolor menstrual"
+                  value={menstrualPain}
+                  onChange={setMenstrualPain}
+                />
+
+                <MultiSelectChips
+                  label="Síntomas físicos"
+                  options={physicalSymptomOptions}
+                  selectedOptions={selectedPhysicalSymptoms}
+                  onChange={setSelectedPhysicalSymptoms}
+                />
+
+                <MultiSelectChips
+                  label="Síntomas emocionales"
+                  options={emotionalSymptomOptions}
+                  selectedOptions={selectedEmotionalSymptoms}
+                  onChange={setSelectedEmotionalSymptoms}
+                />
+
+                <NotesInput
+                  label="Notas"
+                  value={menstrualNotes}
+                  onChangeText={setMenstrualNotes}
+                  placeholder="Observaciones sobre la menstruación"
+                />
+              </>
             )}
           </View>
         )}
