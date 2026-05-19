@@ -23,16 +23,16 @@ export default function MetricCard({
 }: MetricCardProps) {
   return (
     <AppCard className="flex-1 min-h-[105px]">
-      <View className="flex-1 justify-between">
-        <Text className="text-gray-500 text-sm font-medium">{title}</Text>
+      <View className="flex-1 justify-between items-center">
+        <Text className="text-gray-500 text-sm font-medium text-center">{title}</Text>
 
-        <Text className="text-gray-900 text-2xl font-bold mt-2">
+        <Text className="text-gray-900 text-2xl font-bold mt-2 text-center">
           {value}
         </Text>
 
         {subtitle && (
           <Text
-            className={`text-xs font-semibold px-2 py-1 rounded-full self-start mt-2 ${statusStyles[status]}`}
+            className={`text-xs font-semibold px-2 py-1 rounded-full mt-2 text-center ${statusStyles[status]}`}
           >
             {subtitle}
           </Text>
