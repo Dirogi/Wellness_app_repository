@@ -49,6 +49,12 @@ export default function LoginScreen() {
             <Text className="text-blue-600 font-semibold">Regístrate aquí</Text>
           </Text>
         </Pressable>
+        <Pressable onPress={() => router.push("/auth/activate_account")}>
+          <Text className="text-center text-sm text-gray-500 mt-5">
+            ¿Eres trabajador?{" "}
+            <Text className="text-blue-600 font-semibold">Activa tu cuenta</Text>
+          </Text>
+        </Pressable>
       </View>
     </View>
   );
