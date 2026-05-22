@@ -10,7 +10,7 @@ type MedicalStaffLayoutProps = {
 const medicalStaffMenuItems = [
   { label: "Dashboard", icon: "🩺", route: "/medical-staff/dashboard" },
   { label: "Deportistas", icon: "👥", route: "/medical-staff/athletes" },
-  { label: "Asignados", icon: "🏃", route: "/medical-staff/assigned-athletes" },
+  { label: "Deportistas Asignados", icon: "🏃", route: "/medical-staff/assigned-athletes" },
   { label: "Perfil", icon: "👤", route: "/medical-staff/profile" },
 ];
 
@@ -55,7 +55,7 @@ export default function MedicalStaffLayout({
               className="items-center justify-center py-3 px-2 rounded-2xl mb-2 active:bg-blue-100 w-20"
             >
               <Text className="text-3xl mb-1">{item.icon}</Text>
-              <Text className="text-[11px] text-center text-gray-700 font-medium">
+              <Text className="text-[10px] text-center text-gray-700 font-medium">
                 {item.label}
               </Text>
             </Pressable>

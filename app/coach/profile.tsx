@@ -88,7 +88,7 @@ export default function CoachProfileScreen() {
           </Text>
 
           <Text className="text-gray-700">
-            • Solo accedes a deportistas asignados o de tu centro.
+            • Solo puedes acceder a deportistas asignados de tu centro.
           </Text>
         </View>
       </AppCard>
