@@ -4,10 +4,52 @@ import { Pressable, Text, View } from "react-native";
 import AppButton from "../../src/components/ui/AppButton";
 import AppInput from "../../src/components/ui/AppInput";
 import SectionTitle from "../../src/components/ui/SectionTitle";
+import { supabase } from "../../src/lib/supabase";
 
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
+  async function handleLogin() {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error || !data.user) {
+      console.log("Error login:", error?.message);
+      return;
+    }
+
+    const { data: usuario, error: userError } = await supabase
+    .from("usuarios")
+    .select(`
+      id_usuario,
+      nombre_apellidos,
+      roles(
+        nombre_rol
+      )
+    `)
+    .eq("id_usuario", data.user.id)
+    .single();
+
+    if (userError || !usuario) {
+      console.log(userError?.message);
+      return;
+    }
+
+    const rol = (usuario.roles as any)?.nombre_rol;
+
+    if (rol === "deportista") {
+      router.replace("/athlete/dashboard");
+    } else if (rol === "entrenador") {
+      router.replace("/coach/dashboard");
+    } else if (rol === "staff_medico") {
+      router.replace("/medical-staff/dashboard");
+    } else if (rol === "admin") {
+      router.replace("/admin/dashboard");
+    }
+  }
 
   return (
     <View className="flex-1 justify-center bg-slate-50 px-6">
@@ -41,7 +83,7 @@ export default function LoginScreen() {
           secureTextEntry
         />
 
-        <AppButton title="Entrar" onPress={() => console.log("Login")} />
+        <AppButton title="Entrar" onPress={handleLogin} />
 
         <Pressable onPress={() => router.push("/auth/register")}>
           <Text className="text-center text-sm text-gray-500 mt-5">

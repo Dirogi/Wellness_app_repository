@@ -1,15 +1,15 @@
 import { useState } from "react";
 import {
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
-
 import AthleteLayout from "../../src/components/layout/AthleteLayout";
 import AppButton from "../../src/components/ui/AppButton";
 import AppCard from "../../src/components/ui/AppCard";
 import SectionTitle from "../../src/components/ui/SectionTitle";
+import { logout } from "../../src/lib/auth";
 
 export default function ProfileScreen() {
   const [editing, setEditing] = useState(false);
@@ -162,11 +162,18 @@ export default function ProfileScreen() {
 
           <Text>• Tus datos personales permanecen privados</Text>
         </View>
+        
+        <View className="gap-4">
+          <AppButton
+            title="Cerrar sesión"
+            onPress={logout}
+          />
 
-        <AppButton
-          title="Eliminar cuenta"
-          onPress={() => {}}
-        />
+          <AppButton
+            title="Eliminar cuenta"
+            onPress={() => {}}
+          />
+        </View>
 
       </AppCard>
 
