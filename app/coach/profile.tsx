@@ -1,19 +1,94 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Text, TextInput, TouchableOpacity, View } from "react-native";
 
 import CoachLayout from "../../src/components/layout/CoachLayout";
 import AppButton from "../../src/components/ui/AppButton";
 import AppCard from "../../src/components/ui/AppCard";
 import SectionTitle from "../../src/components/ui/SectionTitle";
+import { logout } from "../../src/lib/auth";
+import { supabase } from "../../src/lib/supabase";
 
 export default function CoachProfileScreen() {
   const [editing, setEditing] = useState(false);
+  const [idUsuario, setIdUsuario] = useState<string | null>(null);
 
   const [profile, setProfile] = useState({
-    email: "entrenador@email.com",
-    center: "Centro Alto Rendimiento Madrid",
-    role: "Entrenador",
+    fullName: "",
+    email: "",
+    center: "",
+    role: "",
   });
+
+  useEffect(() => {
+    loadProfile();
+  }, []);
+
+  async function loadProfile() {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const userId = sessionData.session?.user.id;
+
+    if (!userId) return;
+
+    setIdUsuario(userId);
+
+    const { data, error } = await supabase
+      .from("usuarios")
+      .select(`
+        id_usuario,
+        nombre_apellidos,
+        correo_electronico,
+        centros(nombre_centro),
+        trabajadores(
+          tipos_trabajador(tipo)
+        )
+      `)
+      .eq("id_usuario", userId)
+      .single();
+
+    if (error || !data) {
+      console.log("Error cargando perfil coach:", error?.message);
+      return;
+    }
+
+    const centro = Array.isArray(data.centros)
+      ? data.centros[0]
+      : data.centros;
+
+    const trabajador = Array.isArray(data.trabajadores)
+      ? data.trabajadores[0]
+      : data.trabajadores;
+
+    const tipoTrabajador = Array.isArray(trabajador?.tipos_trabajador)
+      ? trabajador?.tipos_trabajador[0]
+      : trabajador?.tipos_trabajador;
+
+    setProfile({
+      fullName: data.nombre_apellidos || "",
+      email: data.correo_electronico || "",
+      center: centro?.nombre_centro || "Sin centro asignado",
+      role: tipoTrabajador?.tipo || "Entrenador",
+    });
+  }
+
+  async function handleSave() {
+    if (!idUsuario) return;
+
+    const { error } = await supabase
+      .from("usuarios")
+      .update({
+        correo_electronico: profile.email,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id_usuario", idUsuario);
+
+    if (error) {
+      console.log("Error actualizando perfil coach:", error.message);
+      return;
+    }
+
+    setEditing(false);
+    console.log("Perfil coach actualizado correctamente");
+  }
 
   function updateField(key: string, value: string) {
     setProfile((prev) => ({
@@ -29,7 +104,13 @@ export default function CoachProfileScreen() {
           <SectionTitle title="Datos personales" />
 
           <TouchableOpacity
-            onPress={() => setEditing(!editing)}
+            onPress={() => {
+              if (editing) {
+                handleSave();
+              } else {
+                setEditing(true);
+              }
+            }}
             className="bg-blue-600 px-4 py-2 rounded-xl"
           >
             <Text className="text-white font-semibold">
@@ -42,10 +123,12 @@ export default function CoachProfileScreen() {
           <Text className="text-6xl">👤</Text>
 
           <Text className="font-bold text-xl mt-3 text-center">
-            Entrenador Apellido1 Apellido2
+            {profile.fullName || "Entrenador"}
           </Text>
 
-          <Text className="text-gray-500">Entrenador</Text>
+          <Text className="text-gray-500">
+            {profile.role || "Entrenador"}
+          </Text>
         </View>
 
         <ProfileField
@@ -94,17 +177,24 @@ export default function CoachProfileScreen() {
       </AppCard>
 
       <AppCard>
-        <SectionTitle title="Eliminar cuenta" />
+        <SectionTitle title="Cuenta" />
 
         <Text className="text-gray-500 mb-4">
-          Esta acción deberá ser gestionada por un administrador del sistema.
+          La eliminación de cuenta deberá ser gestionada por un administrador del sistema.
         </Text>
 
-        <AppButton
-          title="Solicitar eliminación"
-          variant="danger"
-          onPress={() => console.log("Solicitar eliminación")}
-        />
+        <View className="gap-4">
+          <AppButton
+            title="Cerrar sesión"
+            onPress={logout}
+          />
+
+          <AppButton
+            title="Solicitar eliminación"
+            variant="danger"
+            onPress={() => console.log("Solicitar eliminación")}
+          />
+        </View>
       </AppCard>
     </CoachLayout>
   );
@@ -136,7 +226,9 @@ function ProfileField({
         />
       ) : (
         <View className="bg-slate-50 rounded-2xl p-4">
-          <Text className="text-gray-700">{value}</Text>
+          <Text className="text-gray-700">
+            {value || "Sin completar"}
+          </Text>
         </View>
       )}
     </View>
