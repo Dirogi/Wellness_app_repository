@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
 import AthleteLayout from "../../src/components/layout/AthleteLayout";
 import AppButton from "../../src/components/ui/AppButton";
@@ -6,6 +6,7 @@ import AppCard from "../../src/components/ui/AppCard";
 import AppInput from "../../src/components/ui/AppInput";
 import AppSlider from "../../src/components/ui/AppSlider";
 import SectionTitle from "../../src/components/ui/SectionTitle";
+import { supabase } from "../../src/lib/supabase";
 
 type TabKey =
   | "training"
@@ -24,37 +25,6 @@ const tabs: { key: TabKey; label: string }[] = [
   { key: "cycle", label: "Ciclo Menstrual" },
 ];
 
-const bodyAreaOptions = [
-  "Cuello",
-  "Hombro",
-  "Espalda",
-  "Codo",
-  "Muñeca",
-  "Cadera",
-  "Rodilla",
-  "Tobillo",
-  "Pie",
-];
-
-const physicalSymptomOptions = [
-  "Dolor abdominal",
-  "Dolor lumbar",
-  "Dolor de cabeza",
-  "Hinchazón",
-  "Náuseas",
-  "Calambres",
-  "Sensibilidad mamaria",
-];
-
-const emotionalSymptomOptions = [
-  "Irritabilidad",
-  "Ansiedad",
-  "Tristeza",
-  "Cambios de humor",
-  "Baja motivación",
-  "Estrés",
-  "Cansancio emocional",
-];
 
 export default function DailyRegisterScreen() {
   const [activeTab, setActiveTab] = useState<TabKey>("training");
@@ -93,9 +63,9 @@ export default function DailyRegisterScreen() {
   const [energyLevel, setEnergyLevel] = useState(7);
   const [selfNotes, setSelfNotes] = useState("");
 
-
   const [hasPain, setHasPain] = useState(false);
   const [painIntensity, setPainIntensity] = useState(1);
+  const [bodyAreaOptions, setBodyAreaOptions] = useState<string[]>([]);
   const [selectedBodyAreas, setSelectedBodyAreas] = useState<string[]>([]);
   const [discomfortType, setDiscomfortType] = useState("");
   const [discomfortNotes, setDiscomfortNotes] = useState("");
@@ -103,6 +73,8 @@ export default function DailyRegisterScreen() {
   const [activeMenstruation, setActiveMenstruation] = useState(false);
   const [bleedingLevel, setBleedingLevel] = useState(1);
   const [menstrualPain, setMenstrualPain] = useState(1);
+  const [physicalSymptomOptions, setPhysicalSymptomOptions] = useState<string[]>([]);
+  const [emotionalSymptomOptions, setEmotionalSymptomOptions] = useState<string[]>([]);
   const [selectedPhysicalSymptoms, setSelectedPhysicalSymptoms] = useState<string[]>([]);
   const [selectedEmotionalSymptoms, setSelectedEmotionalSymptoms] = useState<string[]>([]);
   const [menstrualNotes, setMenstrualNotes] = useState("");
@@ -164,10 +136,430 @@ export default function DailyRegisterScreen() {
   const progress = completedTabs.length;
   const progressPercent = `${progress}/6`;
 
+  useEffect(() => {
+    async function fetchBodyAreas() {
+      const { data, error } = await supabase
+        .from("zonas_corporales")
+        .select("nombre_zona")
+        .order("nombre_zona");
+
+      if (error) {
+        console.log("Error cargando zonas corporales:", error.message);
+        return;
+      }
+
+      setBodyAreaOptions(data.map((zona) => zona.nombre_zona));
+    }
+
+    async function fetchSymptoms() {
+      const { data: physicalData, error: physicalError } = await supabase
+        .from("sintomas_fisicos")
+        .select("nombre_sintoma_fisico")
+        .order("nombre_sintoma_fisico");
+
+      if (physicalError) {
+        console.log("Error cargando síntomas físicos:", physicalError.message);
+        return;
+      }
+
+      setPhysicalSymptomOptions(
+        physicalData.map((item) => item.nombre_sintoma_fisico)
+      );
+
+      const { data: emotionalData, error: emotionalError } = await supabase
+        .from("sintomas_emocionales")
+        .select("nombre_sintoma_emocional")
+        .order("nombre_sintoma_emocional");
+
+      if (emotionalError) {
+        console.log("Error cargando síntomas emocionales:", emotionalError.message);
+        return;
+      }
+
+      setEmotionalSymptomOptions(
+        emotionalData.map((item) => item.nombre_sintoma_emocional)
+      );
+    }
+
+    fetchBodyAreas();
+    fetchSymptoms();
+  }, []);
+
   function markCompleted() {
     if (!completedTabs.includes(activeTab)) {
       setCompletedTabs([...completedTabs, activeTab]);
     }
+  }
+
+  async function getOrCreateTodayRegister() {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const userId = sessionData.session?.user.id;
+
+    if (!userId) {
+      console.log("No hay usuario autenticado");
+      return null;
+    }
+
+    const { data: deportista, error: deportistaError } = await supabase
+      .from("deportistas")
+      .select("id_deportista")
+      .eq("id_usuario", userId)
+      .single();
+
+    if (deportistaError || !deportista) {
+      console.log("Error obteniendo deportista:", deportistaError?.message);
+      return null;
+    }
+
+    const today = new Date().toISOString().split("T")[0];
+
+    const { data: existingRegister } = await supabase
+      .from("registros_diarios")
+      .select("id_registro_diario")
+      .eq("id_deportista", deportista.id_deportista)
+      .eq("fecha", today)
+      .maybeSingle();
+
+    if (existingRegister) {
+      return existingRegister.id_registro_diario;
+    }
+
+    const { data: newRegister, error: registerError } = await supabase
+      .from("registros_diarios")
+      .insert({
+        id_deportista: deportista.id_deportista,
+        fecha: today,
+      })
+      .select("id_registro_diario")
+      .single();
+
+    if (registerError || !newRegister) {
+      console.log("Error creando registro diario:", registerError?.message);
+      return null;
+    }
+
+    return newRegister.id_registro_diario;
+  }
+
+  async function saveTrainingSection() {
+    const idRegistroDiario = await getOrCreateTodayRegister();
+
+    if (!idRegistroDiario) return;
+
+    if (!trainingType || !duration) {
+      console.log("Faltan datos de entrenamiento");
+      return;
+    }
+
+    const durationNumber = Number(duration);
+
+    if (Number.isNaN(durationNumber) || durationNumber <= 0) {
+      console.log("Duración no válida");
+      return;
+    }
+
+    const { error } = await supabase
+      .from("entrenamientos")
+      .upsert(
+        {
+          id_registro_diario: idRegistroDiario,
+          tipo_entrenamiento: trainingType,
+          duracion: durationNumber,
+          intensidad_percibida: intensity,
+          carga_de_entrenamiento: trainingLoad,
+          notas_entrenamiento: trainingNotes || null,
+        },
+        {
+          onConflict: "id_registro_diario",
+        }
+      );
+
+    if (error) {
+      console.log("Error guardando entrenamiento:", error.message);
+      return;
+    }
+
+    markCompleted();
+    console.log("Entrenamiento guardado correctamente");
+  }
+
+  async function saveSleepSection() {
+    const idRegistroDiario = await getOrCreateTodayRegister();
+
+    if (!idRegistroDiario) return;
+
+    if (!bedHour || !bedMinute || !wakeHour || !wakeMinute) {
+      console.log("Faltan datos de sueño");
+      return;
+    }
+
+    if (calculatedSleepHours === "-") {
+      console.log("Horas de sueño no válidas");
+      return;
+    }
+
+    const horaAcostarse = `${bedHour.padStart(2, "0")}:${bedMinute.padStart(2, "0")}:00`;
+    const horaLevantarse = `${wakeHour.padStart(2, "0")}:${wakeMinute.padStart(2, "0")}:00`;
+
+    const { error } = await supabase
+      .from("suenos")
+      .upsert(
+        {
+          id_registro_diario: idRegistroDiario,
+          calidad_sueno: sleepQuality,
+          hora_acostarse: horaAcostarse,
+          hora_levantarse: horaLevantarse,
+          horas_de_sueno: Number(calculatedSleepHours),
+          numero_despertares: wakeups ? Number(wakeups) : null,
+          notas_sueno: sleepNotes || null,
+        },
+        {
+          onConflict: "id_registro_diario",
+        }
+      );
+
+    if (error) {
+      console.log("Error guardando sueño:", error.message);
+      return;
+    }
+
+    markCompleted();
+    console.log("Sueño guardado correctamente");
+  }
+
+  async function saveHeartSection() {
+    const idRegistroDiario = await getOrCreateTodayRegister();
+
+    if (!idRegistroDiario) return;
+
+    if (!hrv || !hrvHour || !hrvMinute || !restingHr || !restingHrHour || !restingHrMinute) {
+      console.log("Faltan datos de frecuencia cardiaca");
+      return;
+    }
+
+    const horaMedicionHrv = `${hrvHour.padStart(2, "0")}:${hrvMinute.padStart(2, "0")}:00`;
+    const horaMedicionReposo = `${restingHrHour.padStart(2, "0")}:${restingHrMinute.padStart(2, "0")}:00`;
+
+    const { error } = await supabase
+      .from("frecuencias_cardiacas")
+      .upsert(
+        {
+          id_registro_diario: idRegistroDiario,
+          hrv: Number(hrv),
+          hora_medicion_hrv: horaMedicionHrv,
+          metodo_medicion: measurementMethod || null,
+          fc_reposo: Number(restingHr),
+          hora_medicion_reposo: horaMedicionReposo,
+          notas_fc: heartNotes || null,
+        },
+        {
+          onConflict: "id_registro_diario",
+        }
+      );
+
+    if (error) {
+      console.log("Error guardando frecuencia cardiaca:", error.message);
+      return;
+    }
+
+    markCompleted();
+    console.log("Frecuencia cardiaca guardada correctamente");
+  }
+
+  async function saveSelfPerceptionSection() {
+    const idRegistroDiario = await getOrCreateTodayRegister();
+
+    if (!idRegistroDiario) return;
+
+    const { error } = await supabase
+      .from("autopercepciones")
+      .upsert(
+        {
+          id_registro_diario: idRegistroDiario,
+          motivacion: motivation,
+          estres: stress,
+          irritabilidad: irritability,
+          fatiga_fisica: physicalFatigue,
+          fatiga_mental: mentalFatigue,
+          fatiga_general: fatigueScore,
+          sensacion_recuperacion: recoveryFeeling,
+          preparacion_entrenar: readinessToTrain,
+          nivel_energia: energyLevel,
+          notas_autopercepcion: selfNotes || null,
+        },
+        {
+          onConflict: "id_registro_diario",
+        }
+      );
+
+    if (error) {
+      console.log("Error guardando autopercepción:", error.message);
+      return;
+    }
+
+    markCompleted();
+    console.log("Autopercepción guardada correctamente");
+  }
+
+  async function saveDiscomfortSection() {
+    const idRegistroDiario = await getOrCreateTodayRegister();
+
+    if (!idRegistroDiario) return;
+
+    const { data: molestia, error } = await supabase
+      .from("molestias")
+      .upsert(
+        {
+          id_registro_diario: idRegistroDiario,
+          dolor: hasPain,
+          intensidad: hasPain ? painIntensity : null,
+          tipo_molestia: hasPain ? discomfortType || null : null,
+          notas_molestias: hasPain ? discomfortNotes || null : null,
+        },
+        {
+          onConflict: "id_registro_diario",
+        }
+      )
+      .select("id_molestia")
+      .single();
+
+    if (error || !molestia) {
+      console.log("Error guardando molestias:", error?.message);
+      return;
+    }
+
+    await supabase
+      .from("relaciones_molestias_zonas")
+      .delete()
+      .eq("id_molestia", molestia.id_molestia);
+
+    if (hasPain && selectedBodyAreas.length > 0) {
+      const { data: zonas, error: zonasError } = await supabase
+        .from("zonas_corporales")
+        .select("id_zona_corporal, nombre_zona")
+        .in("nombre_zona", selectedBodyAreas);
+
+      if (zonasError) {
+        console.log("Error obteniendo zonas:", zonasError.message);
+        return;
+      }
+
+      const relaciones = (zonas || []).map((zona) => ({
+        id_molestia: molestia.id_molestia,
+        id_zona_corporal: zona.id_zona_corporal,
+      }));
+
+      if (relaciones.length > 0) {
+        const { error: relacionesError } = await supabase
+          .from("relaciones_molestias_zonas")
+          .insert(relaciones);
+
+        if (relacionesError) {
+          console.log("Error guardando zonas:", relacionesError.message);
+          return;
+        }
+      }
+    }
+
+    markCompleted();
+    console.log("Molestias guardadas correctamente");
+  }
+
+  async function saveCycleSection() {
+    const idRegistroDiario = await getOrCreateTodayRegister();
+
+    if (!idRegistroDiario) return;
+
+    const { data: ciclo, error } = await supabase
+      .from("ciclos_menstruales")
+      .upsert(
+        {
+          id_registro_diario: idRegistroDiario,
+          menstruacion_activa: activeMenstruation,
+          sangrado: activeMenstruation ? bleedingLevel : 0,
+          dolor_menstrual: activeMenstruation ? menstrualPain : 0,
+          notas_menstruacion: activeMenstruation ? menstrualNotes || null : null,
+        },
+        {
+          onConflict: "id_registro_diario",
+        }
+      )
+      .select("id_menstruacion")
+      .single();
+
+    if (error || !ciclo) {
+      console.log("Error guardando ciclo menstrual:", error?.message);
+      return;
+    }
+
+    await supabase
+      .from("relaciones_sintomas_fisicos")
+      .delete()
+      .eq("id_menstruacion", ciclo.id_menstruacion);
+
+    await supabase
+      .from("relaciones_sintomas_emocionales")
+      .delete()
+      .eq("id_menstruacion", ciclo.id_menstruacion);
+
+    if (activeMenstruation && selectedPhysicalSymptoms.length > 0) {
+      const { data: sintomasFisicos, error: fisicosError } = await supabase
+        .from("sintomas_fisicos")
+        .select("id_sintoma_fisico, nombre_sintoma_fisico")
+        .in("nombre_sintoma_fisico", selectedPhysicalSymptoms);
+
+      if (fisicosError) {
+        console.log("Error obteniendo síntomas físicos:", fisicosError.message);
+        return;
+      }
+
+      const relacionesFisicas = (sintomasFisicos || []).map((sintoma) => ({
+        id_menstruacion: ciclo.id_menstruacion,
+        id_sintoma_fisico: sintoma.id_sintoma_fisico,
+      }));
+
+      if (relacionesFisicas.length > 0) {
+        const { error: relacionesFisicasError } = await supabase
+          .from("relaciones_sintomas_fisicos")
+          .insert(relacionesFisicas);
+
+        if (relacionesFisicasError) {
+          console.log("Error guardando síntomas físicos:", relacionesFisicasError.message);
+          return;
+        }
+      }
+    }
+
+    if (activeMenstruation && selectedEmotionalSymptoms.length > 0) {
+      const { data: sintomasEmocionales, error: emocionalesError } = await supabase
+        .from("sintomas_emocionales")
+        .select("id_sintoma_emocional, nombre_sintoma_emocional")
+        .in("nombre_sintoma_emocional", selectedEmotionalSymptoms);
+
+      if (emocionalesError) {
+        console.log("Error obteniendo síntomas emocionales:", emocionalesError.message);
+        return;
+      }
+
+      const relacionesEmocionales = (sintomasEmocionales || []).map((sintoma) => ({
+        id_menstruacion: ciclo.id_menstruacion,
+        id_sintoma_emocional: sintoma.id_sintoma_emocional,
+      }));
+
+      if (relacionesEmocionales.length > 0) {
+        const { error: relacionesEmocionalesError } = await supabase
+          .from("relaciones_sintomas_emocionales")
+          .insert(relacionesEmocionales);
+
+        if (relacionesEmocionalesError) {
+          console.log("Error guardando síntomas emocionales:", relacionesEmocionalesError.message);
+          return;
+        }
+      }
+    }
+
+    markCompleted();
+    console.log("Ciclo menstrual guardado correctamente");
   }
 
   return (
@@ -620,47 +1012,43 @@ export default function DailyRegisterScreen() {
           </View>
         )}
 
-        <AppButton title="Marcar como completado" onPress={markCompleted} />
+        <AppButton
+          title={
+            activeTab === "training"
+              ? "Guardar entrenamiento"
+              : activeTab === "sleep"
+              ? "Guardar sueño"
+              : activeTab === "heart"
+              ? "Guardar frecuencia cardiaca"
+              : activeTab === "self"
+              ? "Guardar autopercepción"
+              : activeTab === "discomfort"
+              ? "Guardar molestias"
+              : activeTab === "cycle"
+              ? "Guardar ciclo menstrual"
+              : "Marcar como completado"
+          }
+          onPress={
+            activeTab === "training"
+              ? saveTrainingSection
+              : activeTab === "sleep"
+              ? saveSleepSection
+              : activeTab === "heart"
+              ? saveHeartSection
+              : activeTab === "self"
+              ? saveSelfPerceptionSection
+              : activeTab === "discomfort"
+              ? saveDiscomfortSection
+              : activeTab === "cycle"
+              ? saveCycleSection
+              : markCompleted
+          }
+        />
       </AppCard>
     </AthleteLayout>
   );
 }
 
-/*function ScaleSelector({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: number;
-  onChange: (value: number) => void;
-}) {
-  return (
-    <View className="mb-5">
-      <Text className="text-sm font-medium text-gray-700 mb-3">{label}</Text>
-
-      <View className="flex-row flex-wrap gap-2">
-        {Array.from({ length: 10 }, (_, index) => index + 1).map((number) => (
-          <Pressable
-            key={number}
-            onPress={() => onChange(number)}
-            className={`w-10 h-10 rounded-full items-center justify-center ${
-              value === number ? "bg-blue-600" : "bg-gray-100"
-            }`}
-          >
-            <Text
-              className={`font-semibold ${
-                value === number ? "text-white" : "text-gray-700"
-              }`}
-            >
-              {number}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
-    </View>
-  );
-}*/
 
 function ToggleOption({
   label,
