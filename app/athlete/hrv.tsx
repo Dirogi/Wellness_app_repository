@@ -1,37 +1,101 @@
+import { useEffect, useState } from "react";
 import { Text, View } from "react-native";
 import AthleteLayout from "../../src/components/layout/AthleteLayout";
 import AppCard from "../../src/components/ui/AppCard";
 import MetricCard from "../../src/components/ui/MetricCard";
 import SectionTitle from "../../src/components/ui/SectionTitle";
+import { supabase } from "../../src/lib/supabase";
 
-const heartWeekData = [
-  { day: "Lun", hrv: 72, restingHr: 48 },
-  { day: "Mar", hrv: 68, restingHr: 50 },
-  { day: "Mié", hrv: 75, restingHr: 47 },
-  { day: "Jue", hrv: 64, restingHr: 52 },
-  { day: "Vie", hrv: 70, restingHr: 49 },
-  { day: "Sáb", hrv: 78, restingHr: 46 },
-  { day: "Dom", hrv: 74, restingHr: 44 },
-];
+type HeartItem = {
+  fecha: string;
+  hrv: number | null;
+  fc_reposo: number | null;
+};
 
 export default function HeartRateScreen() {
-  const latest = heartWeekData[heartWeekData.length - 1];
+  const [loading, setLoading] = useState(true);
+  const [heartData, setHeartData] = useState<HeartItem[]>([]);
+
+  useEffect(() => {
+    loadHeartData();
+  }, []);
+
+  async function loadHeartData() {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const userId = sessionData.session?.user.id;
+
+    if (!userId) return;
+
+    const { data: athleteData } = await supabase
+      .from("deportistas")
+      .select("id_deportista")
+      .eq("id_usuario", userId)
+      .single();
+
+    if (!athleteData) return;
+
+    const { data, error } = await supabase
+      .from("registros_diarios")
+      .select(`
+        fecha,
+        frecuencias_cardiacas(
+          hrv,
+          fc_reposo
+        )
+      `)
+      .eq("id_deportista", athleteData.id_deportista)
+      .order("fecha", { ascending: false })
+      .limit(7);
+
+    if (error) {
+      console.log("Error cargando frecuencia cardiaca:", error.message);
+      return;
+    }
+
+    const formattedData =
+      data
+        ?.map((item: any) => {
+          const heart = first(item.frecuencias_cardiacas);
+          if (!heart) return null;
+
+          return {
+            fecha: item.fecha,
+            hrv: heart.hrv,
+            fc_reposo: heart.fc_reposo,
+          };
+        })
+        .filter(Boolean) || [];
+
+    setHeartData(formattedData as HeartItem[]);
+    setLoading(false);
+  }
+
+  if (loading) {
+    return (
+      <AthleteLayout title="Frecuencia cardiaca">
+        <Text className="text-gray-500">Cargando frecuencia cardiaca...</Text>
+      </AthleteLayout>
+    );
+  }
+
+  const latest = heartData[0];
+  const chartData = heartData.slice().reverse();
 
   return (
     <AthleteLayout title="Frecuencia cardiaca">
       <View className="flex-row gap-3 mb-6">
         <MetricCard
           title="HRV actual"
-          value={`${latest.hrv} ms`}
-          subtitle="Bueno"
-          status="good"
+          value={latest?.hrv ? `${latest.hrv} ms` : "-"}
+          subtitle={latest ? "Última medición" : "Sin datos"}
+          status="normal"
         />
 
         <MetricCard
           title="FC en reposo"
-          value={`${latest.restingHr} bpm`}
-          subtitle="Óptima"
-          status="good"
+          value={latest?.fc_reposo ? `${latest.fc_reposo} bpm` : "-"}
+          subtitle={latest ? "Última medición" : "Sin datos"}
+          status="normal"
         />
       </View>
 
@@ -42,9 +106,9 @@ export default function HeartRateScreen() {
         />
 
         <SimpleLineChart
-          data={heartWeekData.map((item) => ({
-            label: item.day,
-            value: item.hrv,
+          data={chartData.map((item) => ({
+            label: shortDate(item.fecha),
+            value: item.hrv || 0,
           }))}
           maxValue={100}
           color="blue"
@@ -59,11 +123,11 @@ export default function HeartRateScreen() {
         />
 
         <SimpleLineChart
-          data={heartWeekData.map((item) => ({
-            label: item.day,
-            value: item.restingHr,
+          data={chartData.map((item) => ({
+            label: shortDate(item.fecha),
+            value: item.fc_reposo || 0,
           }))}
-          maxValue={80}
+          maxValue={100}
           color="red"
           unit="bpm"
         />
@@ -83,6 +147,14 @@ function SimpleLineChart({
   color: "blue" | "red";
   unit: string;
 }) {
+  if (data.length === 0) {
+    return (
+      <View className="h-48 bg-slate-50 rounded-2xl p-4 items-center justify-center">
+        <Text className="text-gray-500">Sin datos suficientes</Text>
+      </View>
+    );
+  }
+
   const colorClass = color === "blue" ? "bg-blue-500" : "bg-red-500";
 
   return (
@@ -114,4 +186,14 @@ function SimpleLineChart({
       </View>
     </View>
   );
+}
+
+function first(value: any) {
+  if (Array.isArray(value)) return value[0];
+  return value;
+}
+
+function shortDate(date: string) {
+  const [, month, day] = date.split("-");
+  return `${day}/${month}`;
 }

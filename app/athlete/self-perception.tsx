@@ -1,44 +1,134 @@
+import { useEffect, useState } from "react";
 import { Text, View } from "react-native";
 import AthleteLayout from "../../src/components/layout/AthleteLayout";
 import AppCard from "../../src/components/ui/AppCard";
 import MetricCard from "../../src/components/ui/MetricCard";
 import SectionTitle from "../../src/components/ui/SectionTitle";
+import { supabase } from "../../src/lib/supabase";
 
-const weeklySelfData = [
-  { day: "Lun", motivation: 7, stress: 3, irritability: 2, physicalFatigue: 3, mentalFatigue: 4, energy: 7, readiness: 5 },
-  { day: "Mar", motivation: 6, stress: 5, irritability: 4, physicalFatigue: 4, mentalFatigue: 5, energy: 6, readiness: 3 },
-  { day: "Mié", motivation: 8, stress: 2, irritability: 3, physicalFatigue: 5, mentalFatigue: 6, energy: 8, readiness: 5 },
-  { day: "Jue", motivation: 5, stress: 6, irritability: 5, physicalFatigue: 6, mentalFatigue: 6, energy: 5, readiness: 2 },
-  { day: "Vie", motivation: 7, stress: 4, irritability: 3, physicalFatigue: 4, mentalFatigue: 5, energy: 7, readiness: 4 },
-  { day: "Sáb", motivation: 8, stress: 3, irritability: 2, physicalFatigue: 3, mentalFatigue: 4, energy: 8, readiness: 4 },
-  { day: "Dom", motivation: 7, stress: 4, irritability: 3, physicalFatigue: 4, mentalFatigue: 5, energy: 7, readiness: 4 },
-];
+type SelfItem = {
+  fecha: string;
+  motivacion: number | null;
+  estres: number | null;
+  irritabilidad: number | null;
+  fatiga_fisica: number | null;
+  fatiga_mental: number | null;
+  fatiga_general: number | null;
+  sensacion_recuperacion: number | null;
+  preparacion_entrenar: number | null;
+  nivel_energia: number | null;
+};
 
 export default function SelfPerceptionScreen() {
-  const latest = weeklySelfData[weeklySelfData.length - 1];
+  const [loading, setLoading] = useState(true);
+  const [selfData, setSelfData] = useState<SelfItem[]>([]);
 
-  const moodScore = calculateMood(
-    latest.motivation,
-    latest.stress,
-    latest.irritability
-  );
+  useEffect(() => {
+    loadSelfData();
+  }, []);
 
-  const fatigueScore = Math.round(
-    (latest.physicalFatigue + latest.mentalFatigue) / 2
-  );
+  async function loadSelfData() {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const userId = sessionData.session?.user.id;
+
+    if (!userId) return;
+
+    const { data: athleteData } = await supabase
+      .from("deportistas")
+      .select("id_deportista")
+      .eq("id_usuario", userId)
+      .single();
+
+    if (!athleteData) return;
+
+    const { data, error } = await supabase
+      .from("registros_diarios")
+      .select(`
+        fecha,
+        autopercepciones(
+          motivacion,
+          estres,
+          irritabilidad,
+          fatiga_fisica,
+          fatiga_mental,
+          fatiga_general,
+          sensacion_recuperacion,
+          preparacion_entrenar,
+          nivel_energia
+        )
+      `)
+      .eq("id_deportista", athleteData.id_deportista)
+      .order("fecha", { ascending: false })
+      .limit(7);
+
+    if (error) {
+      console.log("Error cargando autopercepción:", error.message);
+      return;
+    }
+
+    const formattedData =
+      data
+        ?.map((item: any) => {
+          const self = first(item.autopercepciones);
+          if (!self) return null;
+
+          return {
+            fecha: item.fecha,
+            motivacion: self.motivacion,
+            estres: self.estres,
+            irritabilidad: self.irritabilidad,
+            fatiga_fisica: self.fatiga_fisica,
+            fatiga_mental: self.fatiga_mental,
+            fatiga_general: self.fatiga_general,
+            sensacion_recuperacion: self.sensacion_recuperacion,
+            preparacion_entrenar: self.preparacion_entrenar,
+            nivel_energia: self.nivel_energia,
+          };
+        })
+        .filter(Boolean) || [];
+
+    setSelfData(formattedData as SelfItem[]);
+    setLoading(false);
+  }
+
+  if (loading) {
+    return (
+      <AthleteLayout title="Autopercepción">
+        <Text className="text-gray-500">Cargando autopercepción...</Text>
+      </AthleteLayout>
+    );
+  }
+
+  const latest = selfData[0];
+  const weeklyData = selfData.slice().reverse();
+
+  const moodScore = latest
+    ? calculateMood(
+        latest.motivacion || 0,
+        latest.estres || 0,
+        latest.irritabilidad || 0
+      )
+    : 0;
+
+  const fatigueScore = latest?.fatiga_general
+    ? Math.round(latest.fatiga_general)
+    : latest
+    ? Math.round(((latest.fatiga_fisica || 0) + (latest.fatiga_mental || 0)) / 2)
+    : 0;
 
   return (
     <AthleteLayout title="Autopercepción">
       <View className="flex-row gap-3 mb-6">
         <MetricCard
           title="Estado de ánimo"
-          value={`${moodScore}/10`}
+          value={latest ? `${moodScore}/10` : "-"}
           subtitle="Actual"
-          status="good"
+          status="normal"
         />
+
         <MetricCard
           title="Fatiga"
-          value={`${fatigueScore}/10`}
+          value={latest ? `${fatigueScore}/10` : "-"}
           subtitle="Media"
           status="normal"
         />
@@ -47,7 +137,7 @@ export default function SelfPerceptionScreen() {
       <View className="mb-6">
         <MetricCard
           title="Preparación para entrenar"
-          value={`${latest.readiness}/5`}
+          value={latest ? `${latest.preparacion_entrenar || 0}/5` : "-"}
           subtitle="Última medición"
           status="normal"
         />
@@ -59,11 +149,15 @@ export default function SelfPerceptionScreen() {
           subtitle="Motivación, estrés e irritabilidad"
         />
 
-        <RadarMock
-          motivation={latest.motivation}
-          stress={latest.stress}
-          irritability={latest.irritability}
-        />
+        {latest ? (
+          <RadarMock
+            motivation={latest.motivacion || 0}
+            stress={latest.estres || 0}
+            irritability={latest.irritabilidad || 0}
+          />
+        ) : (
+          <EmptyBox text="Sin datos de autopercepción" />
+        )}
       </AppCard>
 
       <AppCard className="mb-6">
@@ -73,12 +167,12 @@ export default function SelfPerceptionScreen() {
         />
 
         <GroupedBars
-          data={weeklySelfData.map((item) => ({
-            label: item.day,
+          data={weeklyData.map((item) => ({
+            label: shortDate(item.fecha),
             values: [
-              { name: "Motivación", value: item.motivation },
-              { name: "Estrés", value: item.stress },
-              { name: "Irritabilidad", value: item.irritability },
+              { name: "Motivación", value: item.motivacion || 0 },
+              { name: "Estrés", value: item.estres || 0 },
+              { name: "Irritabilidad", value: item.irritabilidad || 0 },
             ],
           }))}
         />
@@ -91,16 +185,18 @@ export default function SelfPerceptionScreen() {
         />
 
         <GroupedBars
-          data={weeklySelfData.map((item) => ({
-            label: item.day,
+          data={weeklyData.map((item) => ({
+            label: shortDate(item.fecha),
             values: [
-              { name: "Física", value: item.physicalFatigue },
-              { name: "Mental", value: item.mentalFatigue },
+              { name: "Física", value: item.fatiga_fisica || 0 },
+              { name: "Mental", value: item.fatiga_mental || 0 },
               {
                 name: "Media",
-                value: Math.round(
-                  (item.physicalFatigue + item.mentalFatigue) / 2
-                ),
+                value:
+                  item.fatiga_general ||
+                  Math.round(
+                    ((item.fatiga_fisica || 0) + (item.fatiga_mental || 0)) / 2
+                  ),
               },
             ],
           }))}
@@ -114,25 +210,31 @@ export default function SelfPerceptionScreen() {
         />
 
         <View className="gap-3">
-          {weeklySelfData.map((item) => (
-            <View
-              key={item.day}
-              className="flex-row items-center justify-between bg-slate-50 rounded-2xl p-3"
-            >
-              <Text className="font-semibold text-gray-700">{item.day}</Text>
+          {weeklyData.length > 0 ? (
+            weeklyData.map((item) => (
+              <View
+                key={item.fecha}
+                className="flex-row items-center justify-between bg-slate-50 rounded-2xl p-3"
+              >
+                <Text className="font-semibold text-gray-700">
+                  {shortDate(item.fecha)}
+                </Text>
 
-              <View className="flex-1 mx-3 h-3 bg-gray-200 rounded-full overflow-hidden">
-                <View
-                  className="h-3 bg-emerald-500 rounded-full"
-                  style={{ width: `${item.energy * 10}%` }}
-                />
+                <View className="flex-1 mx-3 h-3 bg-gray-200 rounded-full overflow-hidden">
+                  <View
+                    className="h-3 bg-emerald-500 rounded-full"
+                    style={{ width: `${(item.nivel_energia || 0) * 10}%` }}
+                  />
+                </View>
+
+                <Text className="font-bold text-emerald-700">
+                  {item.nivel_energia || 0}/10
+                </Text>
               </View>
-
-              <Text className="font-bold text-emerald-700">
-                {item.energy}/10
-              </Text>
-            </View>
-          ))}
+            ))
+          ) : (
+            <Text className="text-gray-500">Sin datos suficientes</Text>
+          )}
         </View>
       </AppCard>
 
@@ -143,9 +245,9 @@ export default function SelfPerceptionScreen() {
         />
 
         <SimpleBarChart
-          data={weeklySelfData.map((item) => ({
-            label: item.day,
-            value: item.readiness,
+          data={weeklyData.map((item) => ({
+            label: shortDate(item.fecha),
+            value: item.preparacion_entrenar || 0,
           }))}
           maxValue={5}
         />
@@ -201,6 +303,10 @@ function GroupedBars({
     values: { name: string; value: number }[];
   }[];
 }) {
+  if (data.length === 0) {
+    return <EmptyBox text="Sin datos suficientes" />;
+  }
+
   return (
     <View className="h-52 bg-slate-50 rounded-2xl p-4">
       <View className="flex-row items-end justify-between flex-1">
@@ -238,6 +344,10 @@ function SimpleBarChart({
   data: { label: string; value: number }[];
   maxValue: number;
 }) {
+  if (data.length === 0) {
+    return <EmptyBox text="Sin datos suficientes" />;
+  }
+
   return (
     <View className="h-44 bg-slate-50 rounded-2xl p-4 flex-row items-end justify-between">
       {data.map((item, index) => {
@@ -257,4 +367,22 @@ function SimpleBarChart({
       })}
     </View>
   );
+}
+
+function EmptyBox({ text }: { text: string }) {
+  return (
+    <View className="h-44 bg-slate-50 rounded-2xl p-4 items-center justify-center">
+      <Text className="text-gray-500">{text}</Text>
+    </View>
+  );
+}
+
+function first(value: any) {
+  if (Array.isArray(value)) return value[0];
+  return value;
+}
+
+function shortDate(date: string) {
+  const [, month, day] = date.split("-");
+  return `${day}/${month}`;
 }

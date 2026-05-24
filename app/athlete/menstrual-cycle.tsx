@@ -1,95 +1,164 @@
+import { useEffect, useState } from "react";
 import { Text, View } from "react-native";
+
 import AthleteLayout from "../../src/components/layout/AthleteLayout";
 import AppCard from "../../src/components/ui/AppCard";
 import MetricCard from "../../src/components/ui/MetricCard";
 import SectionTitle from "../../src/components/ui/SectionTitle";
+import { supabase } from "../../src/lib/supabase";
 
-const menstrualData = [
-  {
-    day: "Día 1",
-    active: true,
-    bleeding: 5,
-    pain: 4,
-    physicalSymptoms: ["Dolor abdominal", "Hinchazón"],
-    emotionalSymptoms: ["Irritabilidad"],
-  },
-  {
-    day: "Día 2",
-    active: true,
-    bleeding: 7,
-    pain: 7,
-    physicalSymptoms: ["Calambres", "Dolor lumbar"],
-    emotionalSymptoms: ["Cambios de humor"],
-  },
-  {
-    day: "Día 3",
-    active: true,
-    bleeding: 6,
-    pain: 8,
-    physicalSymptoms: ["Dolor de cabeza"],
-    emotionalSymptoms: ["Cansancio emocional"],
-  },
-  {
-    day: "Día 4",
-    active: true,
-    bleeding: 4,
-    pain: 4,
-    physicalSymptoms: ["Hinchazón"],
-    emotionalSymptoms: ["Baja motivación"],
-  },
-  {
-    day: "Día 5",
-    active: true,
-    bleeding: 3,
-    pain: 2,
-    physicalSymptoms: ["Sensibilidad mamaria"],
-    emotionalSymptoms: ["Estrés"],
-  },
-  {
-    day: "Día 6",
-    active: true,
-    bleeding: 1,
-    pain: 1,
-    physicalSymptoms: ["Dolor de cabeza"],
-    emotionalSymptoms: ["Baja motivación"],
-  },
-];
+type CycleItem = {
+  fecha: string;
+  menstruacion_activa: boolean;
+  sangrado: number | null;
+  dolor_menstrual: number | null;
+  sintomas_fisicos: string[];
+  sintomas_emocionales: string[];
+};
 
 export default function MenstrualCycleScreen() {
-  const latest = menstrualData[menstrualData.length - 1];
+  const [loading, setLoading] = useState(true);
+  const [cycleData, setCycleData] = useState<CycleItem[]>([]);
 
-  const activePeriodData = menstrualData.filter((item) => item.active);
+  useEffect(() => {
+    loadCycleData();
+  }, []);
 
-  const latestBleeding = latest.active ? latest.bleeding : 0;
-  const latestPain = latest.active ? latest.pain : 0;
+  async function loadCycleData() {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const userId = sessionData.session?.user.id;
 
-  const currentPhysicalSymptoms = latest.active ? latest.physicalSymptoms : [];
-  const currentEmotionalSymptoms = latest.active ? latest.emotionalSymptoms : [];
+    if (!userId) return;
+
+    const { data: athleteData } = await supabase
+      .from("deportistas")
+      .select("id_deportista")
+      .eq("id_usuario", userId)
+      .single();
+
+    if (!athleteData) return;
+
+    const { data, error } = await supabase
+      .from("registros_diarios")
+      .select(`
+        fecha,
+        ciclos_menstruales(
+          id_menstruacion,
+          menstruacion_activa,
+          sangrado,
+          dolor_menstrual,
+          relaciones_sintomas_fisicos(
+            sintomas_fisicos(nombre_sintoma_fisico)
+          ),
+          relaciones_sintomas_emocionales(
+            sintomas_emocionales(nombre_sintoma_emocional)
+          )
+        )
+      `)
+      .eq("id_deportista", athleteData.id_deportista)
+      .order("fecha", { ascending: false })
+      .limit(30);
+
+    if (error) {
+      console.log("Error cargando ciclo menstrual:", error.message);
+      return;
+    }
+
+    const formattedData =
+      data
+        ?.map((item: any) => {
+          const cycle = first(item.ciclos_menstruales);
+          if (!cycle) return null;
+
+          const sintomasFisicos =
+            cycle.relaciones_sintomas_fisicos?.map((rel: any) => {
+              const sintoma = first(rel.sintomas_fisicos);
+              return sintoma?.nombre_sintoma_fisico;
+            }).filter(Boolean) || [];
+
+          const sintomasEmocionales =
+            cycle.relaciones_sintomas_emocionales?.map((rel: any) => {
+              const sintoma = first(rel.sintomas_emocionales);
+              return sintoma?.nombre_sintoma_emocional;
+            }).filter(Boolean) || [];
+
+          return {
+            fecha: item.fecha,
+            menstruacion_activa: cycle.menstruacion_activa,
+            sangrado: cycle.sangrado,
+            dolor_menstrual: cycle.dolor_menstrual,
+            sintomas_fisicos: sintomasFisicos,
+            sintomas_emocionales: sintomasEmocionales,
+          };
+        })
+        .filter(Boolean) || [];
+
+    setCycleData(formattedData as CycleItem[]);
+    setLoading(false);
+  }
+
+  if (loading) {
+    return (
+      <AthleteLayout title="Ciclo menstrual">
+        <Text className="text-gray-500">Cargando ciclo menstrual...</Text>
+      </AthleteLayout>
+    );
+  }
+
+  const latest = cycleData[0];
+
+  const latestBleeding = latest?.menstruacion_activa
+    ? latest.sangrado || 0
+    : 0;
+
+  const latestPain = latest?.menstruacion_activa
+    ? latest.dolor_menstrual || 0
+    : 0;
+
+  const activePeriodData = cycleData
+    .filter((item) => item.menstruacion_activa)
+    .slice()
+    .reverse();
+
+  const currentPhysicalSymptoms = latest?.menstruacion_activa
+    ? latest.sintomas_fisicos
+    : [];
+
+  const currentEmotionalSymptoms = latest?.menstruacion_activa
+    ? latest.sintomas_emocionales
+    : [];
 
   return (
     <AthleteLayout title="Ciclo menstrual">
-        <View className="flex-row gap-3 mb-6">
-            <MetricCard
-                title="Menstruación activa"
-                value={latest.active ? "Sí" : "No"}
-                subtitle="Última medición"
-                status={latest.active ? "warning" : "normal"}
-            />
+      <View className="flex-row gap-3 mb-6">
+        <MetricCard
+          title="Menstruación activa"
+          value={latest?.menstruacion_activa ? "Sí" : "No"}
+          subtitle={latest ? "Última medición" : "Sin datos"}
+          status={latest?.menstruacion_activa ? "warning" : "normal"}
+        />
 
-            <AppCard className="flex-1 min-h-[130px] items-center">
-                <Text className="text-gray-500 text-sm font-medium text-center mb-3">
-                    Sangrado
-                </Text>
-                <BloodDropIndicator value={latestBleeding} />
-            </AppCard>
+        <AppCard className="flex-1 min-h-[105px] items-center">
+          <Text className="text-gray-500 text-sm font-medium text-center mb-3">
+            Sangrado
+          </Text>
 
-            <MetricCard
-                title="Dolor menstrual"
-                value={`${latestPain}/10`}
-                subtitle="Última medición"
-                status={latestPain >= 6 ? "danger" : latestPain >= 3 ? "warning" : "good"}
-            />
-        </View>
+          <BloodDropIndicator value={latestBleeding} />
+
+          <Text className="text-gray-900 text-2xl font-bold mt-3 text-center">
+            {latestBleeding}/10
+          </Text>
+        </AppCard>
+
+        <MetricCard
+          title="Dolor menstrual"
+          value={`${latestPain}/10`}
+          subtitle={latest ? "Última medición" : "Sin datos"}
+          status={
+            latestPain >= 6 ? "danger" : latestPain >= 3 ? "warning" : "good"
+          }
+        />
+      </View>
 
       <AppCard className="mb-6">
         <SectionTitle
@@ -99,8 +168,8 @@ export default function MenstrualCycleScreen() {
 
         <SimpleBarChart
           data={activePeriodData.map((item) => ({
-            label: item.day.replace("Día ", "D"),
-            value: item.bleeding,
+            label: shortDate(item.fecha),
+            value: item.sangrado || 0,
           }))}
           maxValue={10}
         />
@@ -112,10 +181,7 @@ export default function MenstrualCycleScreen() {
         {currentPhysicalSymptoms.length > 0 ? (
           <View className="gap-3">
             {currentPhysicalSymptoms.map((symptom) => (
-              <View
-                key={symptom}
-                className="bg-slate-50 rounded-2xl p-3"
-              >
+              <View key={symptom} className="bg-slate-50 rounded-2xl p-3">
                 <Text className="text-gray-800 font-semibold">{symptom}</Text>
               </View>
             ))}
@@ -133,10 +199,7 @@ export default function MenstrualCycleScreen() {
         {currentEmotionalSymptoms.length > 0 ? (
           <View className="gap-3">
             {currentEmotionalSymptoms.map((symptom) => (
-              <View
-                key={symptom}
-                className="bg-slate-50 rounded-2xl p-3"
-              >
+              <View key={symptom} className="bg-slate-50 rounded-2xl p-3">
                 <Text className="text-gray-800 font-semibold">{symptom}</Text>
               </View>
             ))}
@@ -182,6 +245,14 @@ function SimpleBarChart({
   data: { label: string; value: number }[];
   maxValue: number;
 }) {
+  if (data.length === 0) {
+    return (
+      <View className="h-44 bg-slate-50 rounded-2xl p-4 items-center justify-center">
+        <Text className="text-gray-500">Sin datos suficientes</Text>
+      </View>
+    );
+  }
+
   return (
     <View className="h-44 bg-slate-50 rounded-2xl p-4 flex-row items-end justify-between">
       {data.map((item, index) => {
@@ -189,10 +260,7 @@ function SimpleBarChart({
 
         return (
           <View key={`${item.label}-${index}`} className="items-center flex-1">
-            <View
-              className="w-8 bg-red-400 rounded-t-xl"
-              style={{ height }}
-            />
+            <View className="w-8 bg-red-400 rounded-t-xl" style={{ height }} />
             <Text className="text-[10px] text-gray-400 mt-2">
               {item.label}
             </Text>
@@ -201,4 +269,14 @@ function SimpleBarChart({
       })}
     </View>
   );
+}
+
+function first(value: any) {
+  if (Array.isArray(value)) return value[0];
+  return value;
+}
+
+function shortDate(date: string) {
+  const [, month, day] = date.split("-");
+  return `${day}/${month}`;
 }
