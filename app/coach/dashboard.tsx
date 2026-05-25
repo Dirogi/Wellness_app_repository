@@ -1,54 +1,131 @@
+import { useEffect, useState } from "react";
 import { Text, View } from "react-native";
 
 import CoachLayout from "../../src/components/layout/CoachLayout";
 import AppCard from "../../src/components/ui/AppCard";
 import MetricCard from "../../src/components/ui/MetricCard";
 import SectionTitle from "../../src/components/ui/SectionTitle";
+import { supabase } from "../../src/lib/supabase";
 
-const athletesWithDiscomfort = [
-  {
-    name: "Laura Martín",
-    discomfort: "Rodilla izquierda",
-    intensity: 3,
-  },
-  {
-    name: "Carlos Pérez",
-    discomfort: "Lumbar",
-    intensity: 2,
-  },
-  {
-    name: "Marta Ruiz",
-    discomfort: "Gemelo derecho",
-    intensity: 4,
-  },
-];
-
-const trainingLoadAlerts = [
-  {
-    name: "Laura Martín",
-    load: 720,
-  },
-  {
-    name: "Diego Gómez",
-    load: 680,
-  },
-  {
-    name: "Marta Ruiz",
-    load: 640,
-  },
-];
+type AthleteSummary = {
+  id_deportista: number;
+  name: string;
+  discomfort?: {
+    type: string;
+    intensity: number;
+  };
+  load: number;
+};
 
 export default function CoachDashboard() {
+  const [loading, setLoading] = useState(true);
+  const [athletes, setAthletes] = useState<AthleteSummary[]>([]);
+
+  useEffect(() => {
+    loadDashboard();
+  }, []);
+
+  async function loadDashboard() {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const userId = sessionData.session?.user.id;
+
+    if (!userId) return;
+
+    const { data: worker, error: workerError } = await supabase
+      .from("trabajadores")
+      .select("id_trabajador")
+      .eq("id_usuario", userId)
+      .single();
+
+    if (workerError || !worker) {
+      console.log("Error obteniendo entrenador:", workerError?.message);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("asignaciones")
+      .select(`
+        id_deportista,
+        deportistas(
+          id_deportista,
+          usuarios(
+            nombre_apellidos
+          ),
+          registros_diarios(
+            fecha,
+            entrenamientos(
+              carga_de_entrenamiento
+            ),
+            molestias(
+              dolor,
+              intensidad,
+              tipo_molestia
+            )
+          )
+        )
+      `)
+      .eq("id_trabajador", worker.id_trabajador)
+      .eq("active", true);
+
+    if (error) {
+      console.log("Error cargando dashboard coach:", error.message);
+      return;
+    }
+
+    const formatted =
+      data?.map((item: any) => {
+        const deportista = first(item.deportistas);
+        const usuario = first(deportista?.usuarios);
+
+        const registros = deportista?.registros_diarios || [];
+
+        const totalLoad = registros.reduce((sum: number, registro: any) => {
+          const training = first(registro.entrenamientos);
+          return sum + (training?.carga_de_entrenamiento || 0);
+        }, 0);
+
+        const latestDiscomfort = registros
+          .map((registro: any) => first(registro.molestias))
+          .find((molestia: any) => molestia?.dolor);
+
+        return {
+          id_deportista: deportista?.id_deportista,
+          name: usuario?.nombre_apellidos || "Deportista",
+          load: totalLoad,
+          discomfort: latestDiscomfort
+            ? {
+                type: latestDiscomfort.tipo_molestia || "Molestia",
+                intensity: latestDiscomfort.intensidad || 0,
+              }
+            : undefined,
+        };
+      }) || [];
+
+    setAthletes(formatted);
+    setLoading(false);
+  }
+
+  const athletesWithDiscomfort = athletes.filter((athlete) => athlete.discomfort);
+  const trainingLoadAlerts = athletes.filter((athlete) => athlete.load >= 600);
+
+  if (loading) {
+    return (
+      <CoachLayout title="Dashboard">
+        <Text className="text-gray-500">Cargando dashboard...</Text>
+      </CoachLayout>
+    );
+  }
+
   return (
     <CoachLayout title="Dashboard">
       <Text className="text-gray-500 mb-6">
-        ¡Bienvenido/a, Entrenador! Hoy es martes, 7 de abril.
+        ¡Bienvenido/a, Entrenador!
       </Text>
 
       <View className="mb-6">
         <MetricCard
           title="Deportistas asignados"
-          value={7}
+          value={athletes.length}
           subtitle="Activos"
           status="normal"
         />
@@ -61,28 +138,34 @@ export default function CoachDashboard() {
         />
 
         <View className="gap-3">
-          {athletesWithDiscomfort.map((athlete) => (
-            <View
-              key={athlete.name}
-              className="bg-slate-50 rounded-2xl p-4"
-            >
-              <View className="flex-row justify-between items-center mb-1">
-                <Text className="font-bold text-gray-900">
-                  {athlete.name}
-                </Text>
-
-                <View className="bg-amber-100 rounded-full px-3 py-1">
-                  <Text className="text-amber-700 text-xs font-bold">
-                    {athlete.intensity}/10
+          {athletesWithDiscomfort.length > 0 ? (
+            athletesWithDiscomfort.map((athlete) => (
+              <View
+                key={athlete.id_deportista}
+                className="bg-slate-50 rounded-2xl p-4"
+              >
+                <View className="flex-row justify-between items-center mb-1">
+                  <Text className="font-bold text-gray-900">
+                    {athlete.name}
                   </Text>
-                </View>
-              </View>
 
-              <Text className="text-gray-500">
-                Molestia: {athlete.discomfort}
-              </Text>
-            </View>
-          ))}
+                  <View className="bg-amber-100 rounded-full px-3 py-1">
+                    <Text className="text-amber-700 text-xs font-bold">
+                      {athlete.discomfort?.intensity}/10
+                    </Text>
+                  </View>
+                </View>
+
+                <Text className="text-gray-500">
+                  Molestia: {athlete.discomfort?.type}
+                </Text>
+              </View>
+            ))
+          ) : (
+            <Text className="text-gray-500">
+              No hay deportistas con molestias registradas.
+            </Text>
+          )}
         </View>
       </AppCard>
 
@@ -93,22 +176,33 @@ export default function CoachDashboard() {
         />
 
         <View className="gap-3">
-          {trainingLoadAlerts.map((alert) => (
-            <View
-              key={alert.name}
-              className="bg-red-50 rounded-2xl p-4 flex-row justify-between items-center"
-            >
-              <Text className="font-bold text-red-700">
-                {alert.name}
-              </Text>
+          {trainingLoadAlerts.length > 0 ? (
+            trainingLoadAlerts.map((alert) => (
+              <View
+                key={alert.id_deportista}
+                className="bg-red-50 rounded-2xl p-4 flex-row justify-between items-center"
+              >
+                <Text className="font-bold text-red-700">
+                  {alert.name}
+                </Text>
 
-              <Text className="font-bold text-red-700">
-                {alert.load} AU
-              </Text>
-            </View>
-          ))}
+                <Text className="font-bold text-red-700">
+                  {alert.load} AU
+                </Text>
+              </View>
+            ))
+          ) : (
+            <Text className="text-gray-500">
+              No hay alertas de carga actualmente.
+            </Text>
+          )}
         </View>
       </AppCard>
     </CoachLayout>
   );
+}
+
+function first(value: any) {
+  if (Array.isArray(value)) return value[0];
+  return value;
 }

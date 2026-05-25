@@ -1,60 +1,248 @@
-import { useMemo, useState } from "react";
+import { useLocalSearchParams } from "expo-router";
+import { useEffect, useMemo, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 
 import CoachLayout from "../../src/components/layout/CoachLayout";
 import AppCard from "../../src/components/ui/AppCard";
 import MetricCard from "../../src/components/ui/MetricCard";
 import SectionTitle from "../../src/components/ui/SectionTitle";
+import { supabase } from "../../src/lib/supabase";
 
 type MainTab = "training" | "discomfort";
 type TrainingTab = "history" | "trends" | "monthly";
 
-const trainingData = [
-  { day: "Lunes", type: "Fuerza", duration: 60, intensity: 7, load: 420, comment: "Buena sesión de fuerza." },
-  { day: "Martes", type: "Carrera", duration: 45, intensity: 4, load: 180, comment: "Sesión suave sin molestias." },
-  { day: "Miércoles", type: "Fuerza", duration: 70, intensity: 8, load: 560, comment: "Alta intensidad en tren inferior." },
-  { day: "Jueves", type: "Movilidad", duration: 30, intensity: 3, load: 90, comment: "Trabajo de recuperación." },
-  { day: "Viernes", type: "Fuerza", duration: 65, intensity: 7, load: 455, comment: "Carga correcta." },
-];
+type TrainingItem = {
+  fecha: string;
+  tipo_entrenamiento: string | null;
+  duracion: number | null;
+  intensidad_percibida: number | null;
+  carga_de_entrenamiento: number | null;
+  notas_entrenamiento: string | null;
+};
 
-const weeklyLoad = [
-  { label: "S1", value: 1200 },
-  { label: "S2", value: 1500 },
-  { label: "S3", value: 1850 },
-  { label: "S4", value: 1650 },
-];
-
-const discomfortData = [
-  { date: "12/04/2026", area: "Lumbar", intensity: 2, type: "Sobrecarga" },
-  { date: "10/04/2026", area: "Rodilla izquierda", intensity: 3, type: "Dolor" },
-  { date: "03/04/2026", area: "Gemelo derecho", intensity: 1, type: "Pinchazo" },
-];
+type DiscomfortItem = {
+  fecha: string;
+  intensidad: number | null;
+  tipo_molestia: string | null;
+  notas_molestias: string | null;
+  zonas: string[];
+};
 
 export default function CoachAthleteDetailScreen() {
+  const { athleteId } = useLocalSearchParams();
+
   const [mainTab, setMainTab] = useState<MainTab>("training");
   const [trainingTab, setTrainingTab] = useState<TrainingTab>("history");
+  const [loading, setLoading] = useState(true);
 
-  const totalSessions = trainingData.length;
-  const totalMinutes = trainingData.reduce((sum, item) => sum + item.duration, 0);
-  const totalLoad = trainingData.reduce((sum, item) => sum + item.load, 0);
+  const [athleteName, setAthleteName] = useState("Deportista");
+  const [trainingData, setTrainingData] = useState<TrainingItem[]>([]);
+  const [discomfortData, setDiscomfortData] = useState<DiscomfortItem[]>([]);
 
-  const averageLoad = Math.round(totalLoad / totalSessions);
-  const averageIntensity = Math.round(
-    trainingData.reduce((sum, item) => sum + item.intensity, 0) / totalSessions
+  useEffect(() => {
+    loadAthleteDetail();
+  }, [athleteId]);
+
+  async function loadAthleteDetail() {
+    if (!athleteId) return;
+
+    const idDeportista = Number(athleteId);
+
+    const { data, error } = await supabase
+      .from("deportistas")
+      .select(`
+        id_deportista,
+        usuarios(
+          nombre_apellidos
+        ),
+        registros_diarios(
+          fecha,
+          entrenamientos(
+            tipo_entrenamiento,
+            duracion,
+            intensidad_percibida,
+            carga_de_entrenamiento,
+            notas_entrenamiento
+          ),
+          molestias(
+            dolor,
+            intensidad,
+            tipo_molestia,
+            notas_molestias,
+            relaciones_molestias_zonas(
+              zonas_corporales(nombre_zona)
+            )
+          )
+        )
+      `)
+      .eq("id_deportista", idDeportista)
+      .single();
+
+    if (error || !data) {
+      console.log("Error cargando detalle deportista:", error?.message);
+      setLoading(false);
+      return;
+    }
+
+    const usuario = first((data as any).usuarios);
+    setAthleteName(usuario?.nombre_apellidos || "Deportista");
+
+    const registros = ((data as any).registros_diarios || []).sort(
+      (a: any, b: any) => b.fecha.localeCompare(a.fecha)
+    );
+
+    const trainings =
+      registros
+        .map((registro: any) => {
+          const training = first(registro.entrenamientos);
+          if (!training) return null;
+
+          return {
+            fecha: registro.fecha,
+            tipo_entrenamiento: training.tipo_entrenamiento,
+            duracion: training.duracion,
+            intensidad_percibida: training.intensidad_percibida,
+            carga_de_entrenamiento: training.carga_de_entrenamiento,
+            notas_entrenamiento: training.notas_entrenamiento,
+          };
+        })
+        .filter(Boolean) || [];
+
+    const discomforts =
+      registros
+        .map((registro: any) => {
+          const discomfort = first(registro.molestias);
+          if (!discomfort || !discomfort.dolor) return null;
+
+          const zonas =
+            discomfort.relaciones_molestias_zonas
+              ?.map((rel: any) => {
+                const zona = first(rel.zonas_corporales);
+                return zona?.nombre_zona;
+              })
+              .filter(Boolean) || [];
+
+          return {
+            fecha: registro.fecha,
+            intensidad: discomfort.intensidad,
+            tipo_molestia: discomfort.tipo_molestia,
+            notas_molestias: discomfort.notas_molestias,
+            zonas,
+          };
+        })
+        .filter(Boolean) || [];
+
+    setTrainingData(trainings as TrainingItem[]);
+    setDiscomfortData(discomforts as DiscomfortItem[]);
+    setLoading(false);
+  }
+
+  const weeklyTraining = trainingData.slice(0, 7);
+  const monthlyTraining = trainingData.slice(0, 30);
+
+  const totalSessions = weeklyTraining.length;
+
+  const totalMinutes = weeklyTraining.reduce(
+    (sum, item) => sum + (item.duracion || 0),
+    0
   );
+
+  const totalLoad = weeklyTraining.reduce(
+    (sum, item) => sum + (item.carga_de_entrenamiento || 0),
+    0
+  );
+
+  const averageLoad =
+    totalSessions > 0 ? Math.round(totalLoad / totalSessions) : 0;
+
+  const averageIntensity =
+    totalSessions > 0
+      ? Math.round(
+          weeklyTraining.reduce(
+            (sum, item) => sum + (item.intensidad_percibida || 0),
+            0
+          ) / totalSessions
+        )
+      : 0;
 
   const typeDistribution = useMemo(() => {
     const result: Record<string, number> = {};
 
-    trainingData.forEach((item) => {
-      result[item.type] = (result[item.type] || 0) + 1;
+    monthlyTraining.forEach((item) => {
+      const type = item.tipo_entrenamiento || "Sin tipo";
+      result[type] = (result[type] || 0) + 1;
     });
 
     return Object.entries(result);
-  }, []);
+  }, [monthlyTraining]);
+
+  const weeklyLoad = useMemo(() => {
+    return groupLoadByWeek(monthlyTraining);
+  }, [monthlyTraining]);
+
+  const monthlyTotalLoad = monthlyTraining.reduce(
+    (sum, item) => sum + (item.carga_de_entrenamiento || 0),
+    0
+  );
+
+  const monthlyTotalMinutes = monthlyTraining.reduce(
+    (sum, item) => sum + (item.duracion || 0),
+    0
+  );
+
+  const last7Discomfort = useMemo(() => {
+    const today = new Date();
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(today.getDate() - 7);
+
+    return discomfortData.filter((item) => {
+      const itemDate = new Date(item.fecha);
+      return itemDate >= sevenDaysAgo && itemDate <= today;
+    });
+  }, [discomfortData]);
+
+  const currentMonthDiscomfort = useMemo(() => {
+    const now = new Date();
+
+    return discomfortData.filter((item) => {
+      const date = new Date(item.fecha);
+      return (
+        date.getMonth() === now.getMonth() &&
+        date.getFullYear() === now.getFullYear()
+      );
+    });
+  }, [discomfortData]);
+
+  const averageDiscomfortIntensity =
+    last7Discomfort.length > 0
+      ? Math.round(
+          last7Discomfort.reduce(
+            (sum, item) => sum + (item.intensidad || 0),
+            0
+          ) / last7Discomfort.length
+        )
+      : 0;
+
+  const affectedAreas = [
+    ...new Set(discomfortData.flatMap((item) => item.zonas)),
+  ];
+
+  const areaCount = countBy(discomfortData.flatMap((item) => item.zonas));
+
+  const typeCount = countBy(
+    currentMonthDiscomfort.map((item) => item.tipo_molestia || "Sin tipo")
+  );
+
+  if (loading) {
+    return (
+      <CoachLayout title="Detalle deportista">
+        <Text className="text-gray-500">Cargando datos...</Text>
+      </CoachLayout>
+    );
+  }
 
   return (
-    <CoachLayout title="Laura Martín">
+    <CoachLayout title={athleteName}>
       <Text className="text-gray-500 mb-6">
         Vista del deportista asignado
       </Text>
@@ -107,30 +295,40 @@ export default function CoachAthleteDetailScreen() {
               <AppCard className="mb-6">
                 <SectionTitle
                   title="Historial de entrenamientos"
-                  subtitle="Sesiones registradas esta semana"
+                  subtitle="Sesiones registradas"
                 />
 
                 <View className="gap-3">
-                  {trainingData.map((item, index) => (
-                    <View
-                      key={`${item.day}-${index}`}
-                      className="bg-slate-50 rounded-2xl p-4 flex-row justify-between items-center"
-                    >
-                      <View>
-                        <Text className="font-bold text-gray-900">{item.day}</Text>
-                        <Text className="text-gray-500 text-sm">{item.type}</Text>
-                      </View>
+                  {trainingData.length > 0 ? (
+                    trainingData.map((item, index) => (
+                      <View
+                        key={`${item.fecha}-${index}`}
+                        className="bg-slate-50 rounded-2xl p-4 flex-row justify-between items-center"
+                      >
+                        <View>
+                          <Text className="font-bold text-gray-900">
+                            {formatDate(item.fecha)}
+                          </Text>
+                          <Text className="text-gray-500 text-sm">
+                            {item.tipo_entrenamiento || "Entrenamiento"}
+                          </Text>
+                        </View>
 
-                      <View className="items-end">
-                        <Text className="font-bold text-blue-600">
-                          {item.duration} min
-                        </Text>
-                        <Text className="text-gray-500 text-sm">
-                          {item.load} AU
-                        </Text>
+                        <View className="items-end">
+                          <Text className="font-bold text-blue-600">
+                            {item.duracion || 0} min
+                          </Text>
+                          <Text className="text-gray-500 text-sm">
+                            {item.carga_de_entrenamiento || 0} AU
+                          </Text>
+                        </View>
                       </View>
-                    </View>
-                  ))}
+                    ))
+                  ) : (
+                    <Text className="text-gray-500">
+                      No hay entrenamientos registrados.
+                    </Text>
+                  )}
                 </View>
               </AppCard>
 
@@ -141,15 +339,29 @@ export default function CoachAthleteDetailScreen() {
                 />
 
                 <View className="gap-3">
-                  {trainingData.slice(0, 4).map((item, index) => (
-                    <View
-                      key={`${item.day}-comment-${index}`}
-                      className="bg-slate-50 rounded-2xl p-4"
-                    >
-                      <Text className="font-bold text-gray-900">{item.day}</Text>
-                      <Text className="text-gray-600 mt-1">{item.comment}</Text>
-                    </View>
-                  ))}
+                  {trainingData.filter((item) => item.notas_entrenamiento).length >
+                  0 ? (
+                    trainingData
+                      .filter((item) => item.notas_entrenamiento)
+                      .slice(0, 4)
+                      .map((item, index) => (
+                        <View
+                          key={`${item.fecha}-comment-${index}`}
+                          className="bg-slate-50 rounded-2xl p-4"
+                        >
+                          <Text className="font-bold text-gray-900">
+                            {formatDate(item.fecha)}
+                          </Text>
+                          <Text className="text-gray-600 mt-1">
+                            {item.notas_entrenamiento}
+                          </Text>
+                        </View>
+                      ))
+                  ) : (
+                    <Text className="text-gray-500">
+                      No hay comentarios registrados.
+                    </Text>
+                  )}
                 </View>
               </AppCard>
             </>
@@ -160,33 +372,30 @@ export default function CoachAthleteDetailScreen() {
               <AppCard>
                 <SectionTitle title="Evolución de carga" />
                 <SimpleBarChart
-                  data={trainingData.map((item) => ({
-                    label: item.day.slice(0, 3),
-                    value: item.load,
+                  data={weeklyTraining.map((item) => ({
+                    label: shortDate(item.fecha),
+                    value: item.carga_de_entrenamiento || 0,
                   }))}
-                  maxValue={700}
                 />
               </AppCard>
 
               <AppCard>
                 <SectionTitle title="Duración" />
                 <SimpleBarChart
-                  data={trainingData.map((item) => ({
-                    label: item.day.slice(0, 3),
-                    value: item.duration,
+                  data={weeklyTraining.map((item) => ({
+                    label: shortDate(item.fecha),
+                    value: item.duracion || 0,
                   }))}
-                  maxValue={90}
                 />
               </AppCard>
 
               <AppCard>
                 <SectionTitle title="Intensidad" />
                 <SimpleBarChart
-                  data={trainingData.map((item) => ({
-                    label: item.day.slice(0, 3),
-                    value: item.intensity,
+                  data={weeklyTraining.map((item) => ({
+                    label: shortDate(item.fecha),
+                    value: item.intensidad_percibida || 0,
                   }))}
-                  maxValue={10}
                 />
               </AppCard>
             </View>
@@ -199,7 +408,7 @@ export default function CoachAthleteDetailScreen() {
                 subtitle="Carga, distribución y estadísticas"
               />
 
-              <SimpleBarChart data={weeklyLoad} maxValue={2000} />
+              <SimpleBarChart data={weeklyLoad} />
 
               <View className="mt-5 gap-4">
                 <View className="bg-slate-50 rounded-2xl p-4">
@@ -208,19 +417,25 @@ export default function CoachAthleteDetailScreen() {
                   </Text>
 
                   <View className="gap-3">
-                    {typeDistribution.map(([type, count]) => (
-                      <View
-                        key={type}
-                        className="flex-row justify-between bg-emerald-50 rounded-2xl p-3"
-                      >
-                        <Text className="font-semibold text-emerald-700">
-                          {type}
-                        </Text>
-                        <Text className="font-bold text-emerald-700">
-                          {count} sesiones
-                        </Text>
-                      </View>
-                    ))}
+                    {typeDistribution.length > 0 ? (
+                      typeDistribution.map(([type, count]) => (
+                        <View
+                          key={type}
+                          className="flex-row justify-between bg-emerald-50 rounded-2xl p-3"
+                        >
+                          <Text className="font-semibold text-emerald-700">
+                            {type}
+                          </Text>
+                          <Text className="font-bold text-emerald-700">
+                            {count} sesiones
+                          </Text>
+                        </View>
+                      ))
+                    ) : (
+                      <Text className="text-gray-500">
+                        No hay tipos registrados.
+                      </Text>
+                    )}
                   </View>
                 </View>
 
@@ -230,9 +445,12 @@ export default function CoachAthleteDetailScreen() {
                   </Text>
 
                   <View className="gap-3">
-                    <StatRow label="Sesiones" value={`${totalSessions}`} />
-                    <StatRow label="Carga total" value={`${totalLoad} AU`} />
-                    <StatRow label="Tiempo total" value={formatMinutes(totalMinutes)} />
+                    <StatRow label="Sesiones" value={`${monthlyTraining.length}`} />
+                    <StatRow label="Carga total" value={`${monthlyTotalLoad} AU`} />
+                    <StatRow
+                      label="Tiempo total"
+                      value={formatMinutes(monthlyTotalMinutes)}
+                    />
                   </View>
                 </View>
               </View>
@@ -242,121 +460,159 @@ export default function CoachAthleteDetailScreen() {
       )}
 
       {mainTab === "discomfort" && (
-            <>
-                <View className="flex-row gap-3 mb-3">
-                    <MetricCard title="Total mes" value={discomfortData.length} />
-                    <MetricCard title="Últimos 7 días" value={3} />
-                </View>
+        <>
+          <View className="flex-row gap-3 mb-3">
+            <MetricCard title="Total mes" value={currentMonthDiscomfort.length} />
+            <MetricCard title="Últimos 7 días" value={last7Discomfort.length} />
+          </View>
 
-                <View className="flex-row gap-3 mb-6">
-                    <MetricCard title="Intensidad media" value="4/10" />
-                    <MetricCard title="Zonas afectadas" value="4" />
-                </View>
+          <View className="flex-row gap-3 mb-6">
+            <MetricCard
+              title="Intensidad media"
+              value={
+                averageDiscomfortIntensity
+                  ? `${averageDiscomfortIntensity}/10`
+                  : "-"
+              }
+            />
+            <MetricCard title="Zonas afectadas" value={affectedAreas.length} />
+          </View>
 
-                <AppCard className="mb-6">
-                    <SectionTitle
-                        title="Molestias recientes"
-                        subtitle="Últimos registros del deportista"
-                    />
+          <AppCard className="mb-6">
+            <SectionTitle
+              title="Molestias recientes"
+              subtitle="Últimos registros del deportista"
+            />
 
-                    <View className="gap-3">
-                        {discomfortData.map((item, index) => (
-                        <View
-                            key={`${item.area}-${index}`}
-                            className="bg-slate-50 rounded-2xl p-4"
-                        >
-                            <View className="flex-row justify-between mb-1">
-                                <Text className="font-bold text-gray-900">{item.area}</Text>
+            <View className="gap-3">
+              {discomfortData.length > 0 ? (
+                discomfortData.slice(0, 5).map((item, index) => (
+                  <View
+                    key={`${item.fecha}-${index}`}
+                    className="bg-slate-50 rounded-2xl p-4"
+                  >
+                    <View className="flex-row justify-between mb-1">
+                      <Text className="font-bold text-gray-900">
+                        {item.zonas.length > 0
+                          ? item.zonas.join(", ")
+                          : "Zona no especificada"}
+                      </Text>
 
-                                <View className="bg-emerald-100 rounded-full px-3 py-1">
-                                    <Text className="text-emerald-700 text-xs font-bold">
-                                    {item.intensity}/10
-                                    </Text>
-                                </View>
-                            </View>
-
-                            <Text className="text-gray-500">{item.date}</Text>
-                            <Text className="text-blue-600 font-semibold mt-1">
-                                {item.type}
-                            </Text>
-                        </View>
-                        ))}
-                    </View>
-                </AppCard>
-
-                <AppCard className="mb-6">
-                <SectionTitle
-                    title="Zonas más afectadas"
-                    subtitle="Frecuencia acumulada"
-                />
-
-                <View className="gap-3">
-                    {Object.entries(countBy(discomfortData.map((item) => item.area))).map(
-                    ([area, count], index) => (
-                        <View
-                            key={area}
-                            className="flex-row items-center justify-between bg-slate-50 rounded-2xl p-3"
-                        >
-                        <View className="flex-row items-center gap-3">
-                            <View className="w-8 h-8 rounded-full bg-white items-center justify-center">
-                                <Text className="font-bold text-gray-500">{index + 1}</Text>
-                            </View>
-
-                            <Text className="font-semibold text-gray-800">{area}</Text>
-                        </View>
-
-                        <Text className="text-gray-500 text-sm">{count} veces</Text>
-                        </View>
-                    )
-                    )}
-                </View>
-                </AppCard>
-
-                <AppCard className="mb-6">
-                <SectionTitle
-                    title="Tipos de molestias"
-                    subtitle="Tipos registrados durante el último mes"
-                />
-
-                <View className="gap-3">
-                    {Object.entries(countBy(discomfortData.map((item) => item.type))).map(
-                    ([type, count]) => (
-                        <View
-                        key={type}
-                        className="flex-row justify-between bg-amber-100 rounded-2xl p-3"
-                        >
-                        <Text className="font-bold text-amber-800">{type}</Text>
-                        <Text className="font-semibold text-amber-800">
-                            {count} registros
+                      <View className="bg-emerald-100 rounded-full px-3 py-1">
+                        <Text className="text-emerald-700 text-xs font-bold">
+                          {item.intensidad || 0}/10
                         </Text>
-                        </View>
-                    )
-                    )}
-                </View>
-                </AppCard>
+                      </View>
+                    </View>
 
-                <AppCard>
-                <SectionTitle
-                    title="Comentarios de molestias"
-                    subtitle="Últimos comentarios registrados"
-                />
+                    <Text className="text-gray-500">{formatDate(item.fecha)}</Text>
+                    <Text className="text-blue-600 font-semibold mt-1">
+                      {item.tipo_molestia || "Sin tipo"}
+                    </Text>
+                  </View>
+                ))
+              ) : (
+                <Text className="text-gray-500">
+                  No hay molestias registradas.
+                </Text>
+              )}
+            </View>
+          </AppCard>
 
-                <View className="gap-3">
-                    {discomfortData.slice(0, 5).map((item, index) => (
+          <AppCard className="mb-6">
+            <SectionTitle
+              title="Zonas más afectadas"
+              subtitle="Frecuencia acumulada"
+            />
+
+            <View className="gap-3">
+              {Object.entries(areaCount).length > 0 ? (
+                Object.entries(areaCount).map(([area, count], index) => (
+                  <View
+                    key={area}
+                    className="flex-row items-center justify-between bg-slate-50 rounded-2xl p-3"
+                  >
+                    <View className="flex-row items-center gap-3">
+                      <View className="w-8 h-8 rounded-full bg-white items-center justify-center">
+                        <Text className="font-bold text-gray-500">
+                          {index + 1}
+                        </Text>
+                      </View>
+
+                      <Text className="font-semibold text-gray-800">{area}</Text>
+                    </View>
+
+                    <Text className="text-gray-500 text-sm">{count} veces</Text>
+                  </View>
+                ))
+              ) : (
+                <Text className="text-gray-500">
+                  No hay zonas registradas.
+                </Text>
+              )}
+            </View>
+          </AppCard>
+
+          <AppCard className="mb-6">
+            <SectionTitle
+              title="Tipos de molestias"
+              subtitle="Tipos registrados durante el último mes"
+            />
+
+            <View className="gap-3">
+              {Object.entries(typeCount).length > 0 ? (
+                Object.entries(typeCount).map(([type, count]) => (
+                  <View
+                    key={type}
+                    className="flex-row justify-between bg-amber-100 rounded-2xl p-3"
+                  >
+                    <Text className="font-bold text-amber-800">{type}</Text>
+                    <Text className="font-semibold text-amber-800">
+                      {count} registros
+                    </Text>
+                  </View>
+                ))
+              ) : (
+                <Text className="text-gray-500">
+                  No hay tipos registrados este mes.
+                </Text>
+              )}
+            </View>
+          </AppCard>
+
+          <AppCard>
+            <SectionTitle
+              title="Comentarios de molestias"
+              subtitle="Últimos comentarios registrados"
+            />
+
+            <View className="gap-3">
+              {discomfortData.filter((item) => item.notas_molestias).length > 0 ? (
+                discomfortData
+                  .filter((item) => item.notas_molestias)
+                  .slice(0, 5)
+                  .map((item, index) => (
                     <View
-                        key={`${item.area}-comment-${index}`}
-                        className="bg-slate-50 rounded-2xl p-4"
+                      key={`${item.fecha}-comment-${index}`}
+                      className="bg-slate-50 rounded-2xl p-4"
                     >
-                        <Text className="font-bold text-gray-900">{item.date}</Text>
-                        <Text className="text-gray-600 mt-1">
-                            Molestia en {item.area}. Tipo: {item.type}.
-                        </Text>
+                      <Text className="font-bold text-gray-900">
+                        {formatDate(item.fecha)}
+                      </Text>
+                      <Text className="text-gray-600 mt-1">
+                        {item.notas_molestias}
+                      </Text>
                     </View>
-                    ))}
-                </View>
-                </AppCard>
-            </>
-        )}
+                  ))
+              ) : (
+                <Text className="text-gray-500">
+                  No hay comentarios registrados.
+                </Text>
+              )}
+            </View>
+          </AppCard>
+        </>
+      )}
     </CoachLayout>
   );
 }
@@ -390,11 +646,19 @@ function MainTabButton({
 
 function SimpleBarChart({
   data,
-  maxValue,
 }: {
   data: { label: string; value: number }[];
-  maxValue: number;
 }) {
+  if (data.length === 0) {
+    return (
+      <View className="h-44 bg-slate-50 rounded-2xl p-4 items-center justify-center">
+        <Text className="text-gray-500">Sin datos suficientes</Text>
+      </View>
+    );
+  }
+
+  const maxValue = Math.max(...data.map((item) => item.value), 1);
+
   return (
     <View className="h-44 bg-slate-50 rounded-2xl p-4 flex-row items-end justify-between">
       {data.map((item, index) => {
@@ -422,6 +686,18 @@ function StatRow({ label, value }: { label: string; value: string }) {
   );
 }
 
+function first(value: any) {
+  if (Array.isArray(value)) return value[0];
+  return value;
+}
+
+function countBy(items: string[]) {
+  return items.reduce<Record<string, number>>((acc, item) => {
+    acc[item] = (acc[item] || 0) + 1;
+    return acc;
+  }, {});
+}
+
 function formatMinutes(minutes: number) {
   const hours = Math.floor(minutes / 60);
   const mins = minutes % 60;
@@ -432,9 +708,30 @@ function formatMinutes(minutes: number) {
   return `${hours} h ${mins} min`;
 }
 
-function countBy(items: string[]) {
-  return items.reduce<Record<string, number>>((acc, item) => {
-    acc[item] = (acc[item] || 0) + 1;
-    return acc;
-  }, {});
+function formatDate(date: string) {
+  const [year, month, day] = date.split("-");
+  return `${day}/${month}/${year}`;
+}
+
+function shortDate(date: string) {
+  const [, month, day] = date.split("-");
+  return `${day}/${month}`;
+}
+
+function groupLoadByWeek(data: TrainingItem[]) {
+  const weeks = [0, 0, 0, 0];
+
+  data.forEach((item) => {
+    const day = Number(item.fecha.split("-")[2]);
+
+    if (day <= 7) weeks[0] += item.carga_de_entrenamiento || 0;
+    else if (day <= 14) weeks[1] += item.carga_de_entrenamiento || 0;
+    else if (day <= 21) weeks[2] += item.carga_de_entrenamiento || 0;
+    else weeks[3] += item.carga_de_entrenamiento || 0;
+  });
+
+  return weeks.map((value, index) => ({
+    label: `S${index + 1}`,
+    value,
+  }));
 }

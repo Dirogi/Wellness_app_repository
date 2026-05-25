@@ -1,36 +1,113 @@
 import { router } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 
 import CoachLayout from "../../src/components/layout/CoachLayout";
 import AppButton from "../../src/components/ui/AppButton";
 import AppCard from "../../src/components/ui/AppCard";
+import { supabase } from "../../src/lib/supabase";
 
-const initialAssignedAthletes = [
-  { id: 1, name: "Laura Martín" },
-  { id: 2, name: "Carlos Pérez" },
-  { id: 7, name: "Lucía Sánchez" },
-  { id: 9, name: "Irene García" },
-  { id: 11, name: "Elena Romero" },
-  { id: 12, name: "Javier Peña" },
-  { id: 14, name: "Álvaro Gil" },
-];
+type AssignedAthlete = {
+  id_asignacion: number;
+  id_deportista: number;
+  name: string;
+};
 
 export default function AssignedAthletesScreen() {
   const [isUnassignMode, setIsUnassignMode] = useState(false);
-  const [athletes, setAthletes] = useState(initialAssignedAthletes);
+  const [athletes, setAthletes] = useState<AssignedAthlete[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  function handleAthletePress(id: number) {
+  useEffect(() => {
+    loadAssignedAthletes();
+  }, []);
+
+  async function loadAssignedAthletes() {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const userId = sessionData.session?.user.id;
+
+    if (!userId) return;
+
+    const { data: worker, error: workerError } = await supabase
+      .from("trabajadores")
+      .select("id_trabajador")
+      .eq("id_usuario", userId)
+      .single();
+
+    if (workerError || !worker) {
+      console.log("Error obteniendo entrenador:", workerError?.message);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("asignaciones")
+      .select(`
+        id_asignacion,
+        id_deportista,
+        deportistas(
+          usuarios(
+            nombre_apellidos
+          )
+        )
+      `)
+      .eq("id_trabajador", worker.id_trabajador)
+      .eq("active", true)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.log("Error cargando deportistas asignados:", error.message);
+      return;
+    }
+
+    const formatted =
+      data?.map((item: any) => {
+        const deportista = first(item.deportistas);
+        const usuario = first(deportista?.usuarios);
+
+        return {
+          id_asignacion: item.id_asignacion,
+          id_deportista: item.id_deportista,
+          name: usuario?.nombre_apellidos || "Deportista",
+        };
+      }) || [];
+
+    setAthletes(formatted);
+    setLoading(false);
+  }
+
+  function handleAthletePress(idDeportista: number) {
     if (isUnassignMode) return;
 
     router.push({
       pathname: "/coach/athlete-detail",
-      params: { athleteId: id },
+      params: { athleteId: idDeportista },
     } as never);
   }
 
-  function unassignAthlete(id: number) {
-    setAthletes((prev) => prev.filter((athlete) => athlete.id !== id));
+  async function unassignAthlete(idAsignacion: number) {
+    const { error } = await supabase
+      .from("asignaciones")
+      .update({ active: false })
+      .eq("id_asignacion", idAsignacion);
+
+    if (error) {
+      console.log("Error desasignando deportista:", error.message);
+      return;
+    }
+
+    setAthletes((prev) =>
+      prev.filter((athlete) => athlete.id_asignacion !== idAsignacion)
+    );
+
+    console.log("Deportista desasignado correctamente");
+  }
+
+  if (loading) {
+    return (
+      <CoachLayout title="Deportistas asignados">
+        <Text className="text-gray-500">Cargando deportistas...</Text>
+      </CoachLayout>
+    );
   }
 
   return (
@@ -58,26 +135,32 @@ export default function AssignedAthletesScreen() {
         </View>
 
         <View className="gap-3">
-          {athletes.map((athlete) => (
-            <Pressable
-              key={athlete.id}
-              onPress={() => handleAthletePress(athlete.id)}
-              className="bg-slate-50 rounded-2xl p-4 flex-row items-center justify-between"
-            >
-              <Text className="font-bold text-gray-900">
-                {athlete.name}
-              </Text>
+          {athletes.length > 0 ? (
+            athletes.map((athlete) => (
+              <Pressable
+                key={athlete.id_asignacion}
+                onPress={() => handleAthletePress(athlete.id_deportista)}
+                className="bg-slate-50 rounded-2xl p-4 flex-row items-center justify-between"
+              >
+                <Text className="font-bold text-gray-900">
+                  {athlete.name}
+                </Text>
 
-              {isUnassignMode && (
-                <Pressable
-                  onPress={() => unassignAthlete(athlete.id)}
-                  className="w-8 h-8 rounded-full bg-red-100 items-center justify-center"
-                >
-                  <Text className="text-red-600 font-bold">✕</Text>
-                </Pressable>
-              )}
-            </Pressable>
-          ))}
+                {isUnassignMode && (
+                  <Pressable
+                    onPress={() => unassignAthlete(athlete.id_asignacion)}
+                    className="w-8 h-8 rounded-full bg-red-100 items-center justify-center"
+                  >
+                    <Text className="text-red-600 font-bold">✕</Text>
+                  </Pressable>
+                )}
+              </Pressable>
+            ))
+          ) : (
+            <Text className="text-gray-500">
+              No tienes deportistas asignados actualmente.
+            </Text>
+          )}
         </View>
 
         {isUnassignMode && (
@@ -91,4 +174,9 @@ export default function AssignedAthletesScreen() {
       </AppCard>
     </CoachLayout>
   );
+}
+
+function first(value: any) {
+  if (Array.isArray(value)) return value[0];
+  return value;
 }
