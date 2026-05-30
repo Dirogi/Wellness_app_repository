@@ -1,10 +1,15 @@
 import { useEffect, useState } from "react";
 import { Text, View } from "react-native";
+import { BarChart, LineChart } from "react-native-gifted-charts";
 import AthleteLayout from "../../src/components/layout/AthleteLayout";
 import AppCard from "../../src/components/ui/AppCard";
 import MetricCard from "../../src/components/ui/MetricCard";
 import SectionTitle from "../../src/components/ui/SectionTitle";
 import { supabase } from "../../src/lib/supabase";
+import {
+  currentMonthName,
+  dayOnly
+} from "../../src/utils/date";
 
 type SleepItem = {
   fecha: string;
@@ -167,35 +172,99 @@ export default function SleepScreen() {
       <AppCard className="mb-6">
         <SectionTitle
           title="Horas de sueño"
-          subtitle="Evolución durante el mes"
+          subtitle={`Evolución durante el mes (${currentMonthName()})`}
         />
-        <SimpleBarChart
-          data={monthlyData
-            .slice()
-            .reverse()
-            .map((item) => ({
-              label: shortDate(item.fecha),
-              value: item.horas_de_sueno || 0,
-            }))}
-          maxValue={10}
-        />
+
+        {monthlyData.length > 0 ? (
+          <View className="bg-teal-50 rounded-2xl p-4">
+            <BarChart
+              data={monthlyData
+                .slice()
+                .reverse()
+                .map((item) => ({
+                  value: item.horas_de_sueno || 0,
+                  label: dayOnly(item.fecha),
+                }))}
+              height={170}
+              barWidth={10}
+              spacing={7}
+              initialSpacing={12}
+              endSpacing={12}
+              roundedTop
+              frontColor="#14B8A6"
+              maxValue={10}
+              noOfSections={5}
+              yAxisLabelSuffix=" h"
+              yAxisTextStyle={{
+                color: "#6B7280",
+                fontSize: 10,
+              }}
+              xAxisLabelTextStyle={{
+                color: "#6B7280",
+                fontSize: 7,
+              }}
+              xAxisColor="#CBD5E1"
+              yAxisColor="#CBD5E1"
+              rulesColor="#E5E7EB"
+              rulesType="solid"
+              yAxisThickness={1}
+              xAxisThickness={1}
+            />
+          </View>
+        ) : (
+          <View className="h-44 bg-slate-50 rounded-2xl items-center justify-center">
+            <Text className="text-gray-500">Sin datos suficientes</Text>
+          </View>
+        )}
       </AppCard>
 
       <AppCard className="mb-6">
         <SectionTitle
           title="Calidad del sueño"
-          subtitle="Evolución durante el mes"
+          subtitle={`Evolución durante el mes (${currentMonthName()})`}
         />
-        <SimpleLineChart
-          data={monthlyData
-            .slice()
-            .reverse()
-            .map((item) => ({
-              label: shortDate(item.fecha),
-              value: item.calidad_sueno || 0,
-            }))}
-          maxValue={10}
-        />
+
+        {monthlyData.length > 0 ? (
+          <View className="bg-purple-50 rounded-2xl p-4">
+            <LineChart
+              data={monthlyData
+                .slice()
+                .reverse()
+                .map((item) => ({
+                  value: item.calidad_sueno || 0,
+                  label: dayOnly(item.fecha),
+                }))}
+              height={170}
+              hideDataPoints={false}
+              dataPointsColor="#7C3AED"
+              dataPointsRadius={4}
+              thickness={2}
+              color="#7C3AED"
+              initialSpacing={12}
+              endSpacing={12}
+              maxValue={10}
+              noOfSections={5}
+              yAxisTextStyle={{
+                color: "#6B7280",
+                fontSize: 10,
+              }}
+              xAxisLabelTextStyle={{
+                color: "#6B7280",
+                fontSize: 7,
+              }}
+              xAxisColor="#CBD5E1"
+              yAxisColor="#CBD5E1"
+              rulesColor="#E5E7EB"
+              rulesType="solid"
+              yAxisThickness={1}
+              xAxisThickness={1}
+            />
+          </View>
+        ) : (
+          <View className="h-44 bg-slate-50 rounded-2xl items-center justify-center">
+            <Text className="text-gray-500">Sin datos suficientes</Text>
+          </View>
+        )}
       </AppCard>
 
       <View className="flex-row gap-3">
@@ -343,9 +412,4 @@ function formatHours(hours: number) {
 function formatTime(time: string | null) {
   if (!time) return "--:--";
   return time.slice(0, 5);
-}
-
-function shortDate(date: string) {
-  const [, month, day] = date.split("-");
-  return `${day}/${month}`;
 }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Text, View } from "react-native";
+import { LineChart } from "react-native-gifted-charts";
 import AthleteLayout from "../../src/components/layout/AthleteLayout";
 import AppCard from "../../src/components/ui/AppCard";
 import MetricCard from "../../src/components/ui/MetricCard";
@@ -105,15 +106,50 @@ export default function HeartRateScreen() {
           subtitle="Evolución semanal de la HRV"
         />
 
-        <SimpleLineChart
-          data={chartData.map((item) => ({
-            label: shortDate(item.fecha),
-            value: item.hrv || 0,
-          }))}
-          maxValue={100}
-          color="blue"
-          unit="ms"
-        />
+        {chartData.length > 0 ? (
+          <View className="bg-blue-50 rounded-2xl p-4">
+            <LineChart
+              data={chartData.map((item) => ({
+                value: item.hrv || 0,
+                label: shortDate(item.fecha),
+              }))}
+              height={170}
+              curved
+              areaChart
+              initialSpacing={12}
+              endSpacing={12}
+              startFillColor="#3B82F6"
+              endFillColor="#DBEAFE"
+              startOpacity={0.4}
+              endOpacity={0.05}
+              color="#2563EB"
+              thickness={3}
+              dataPointsColor="#2563EB"
+              xAxisColor="#CBD5E1"
+              yAxisColor="#CBD5E1"
+              yAxisThickness={1}
+              xAxisThickness={1}
+              rulesColor="#E5E7EB"
+              rulesType="solid"
+              yAxisTextStyle={{
+                color: "#6B7280",
+                fontSize: 10,
+              }}
+              xAxisLabelTextStyle={{
+                color: "#6B7280",
+                fontSize: 9,
+              }}
+              noOfSections={5}
+              maxValue={100}
+            />
+          </View>
+        ) : (
+          <View className="h-44 bg-slate-50 rounded-2xl items-center justify-center">
+            <Text className="text-gray-500">
+              Sin datos suficientes
+            </Text>
+          </View>
+        )}
       </AppCard>
 
       <AppCard>
@@ -122,15 +158,50 @@ export default function HeartRateScreen() {
           subtitle="Evolución semanal"
         />
 
-        <SimpleLineChart
-          data={chartData.map((item) => ({
-            label: shortDate(item.fecha),
-            value: item.fc_reposo || 0,
-          }))}
-          maxValue={100}
-          color="red"
-          unit="bpm"
-        />
+        {chartData.length > 0 ? (
+          <View className="bg-red-50 rounded-2xl p-4">
+            <LineChart
+              data={chartData.map((item) => ({
+                value: item.fc_reposo || 0,
+                label: shortDate(item.fecha),
+              }))}
+              height={170}
+              curved
+              areaChart
+              initialSpacing={12}
+              endSpacing={12}
+              startFillColor="#EF4444"
+              endFillColor="#FEE2E2"
+              startOpacity={0.4}
+              endOpacity={0.05}
+              color="#DC2626"
+              thickness={3}
+              dataPointsColor="#DC2626"
+              xAxisColor="#CBD5E1"
+              yAxisColor="#CBD5E1"
+              yAxisThickness={1}
+              xAxisThickness={1}
+              rulesColor="#E5E7EB"
+              rulesType="solid"
+              yAxisTextStyle={{
+                color: "#6B7280",
+                fontSize: 10,
+              }}
+              xAxisLabelTextStyle={{
+                color: "#6B7280",
+                fontSize: 9,
+              }}
+              noOfSections={5}
+              maxValue={100}
+            />
+          </View>
+          ) : (
+          <View className="h-44 bg-slate-50 rounded-2xl items-center justify-center">
+            <Text className="text-gray-500">
+              Sin datos suficientes
+            </Text>
+          </View>
+        )}
       </AppCard>
     </AthleteLayout>
   );

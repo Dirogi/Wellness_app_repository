@@ -49,54 +49,48 @@ export default function CoachAthletesScreen() {
 
     setWorkerId(worker.id_trabajador);
 
-    const { data, error } = await supabase
+    const { data: athletesData, error: athletesError } = await supabase
       .from("deportistas")
       .select(`
         id_deportista,
         usuarios(
           nombre_apellidos,
           id_centro
-        ),
-        asignaciones(
-          active,
-          trabajadores(
-            usuarios(
-              nombre_apellidos
-            ),
-            tipos_trabajador(
-              tipo
-            )
-          )
         )
-      `)
+      `);
 
-    if (error) {
-      console.log("Error cargando deportistas:", error.message);
+    if (athletesError) {
+      console.log("Error cargando deportistas:", athletesError.message);
+      return;
+    }
+
+    const { data: assignmentsData, error: assignmentsError } =
+      await supabase.rpc("get_same_center_active_assignments");
+
+    if (assignmentsError) {
+      console.log("Error cargando asignaciones:", assignmentsError.message);
       return;
     }
 
     const formatted =
-      data
-        ?.filter((item: any) => first(item.usuarios)?.id_centro === currentUser.id_centro)
+      athletesData
+        ?.filter(
+          (item: any) =>
+            first(item.usuarios)?.id_centro === currentUser.id_centro
+        )
         .map((item: any) => {
           const usuario = first(item.usuarios);
 
-          const activeCoachAssignment = (item.asignaciones || []).find(
-            (assignment: any) => {
-              const trabajador = first(assignment.trabajadores);
-              const tipo = first(trabajador?.tipos_trabajador);
-
-              return assignment.active && tipo?.tipo === "entrenador";
-            }
+          const coachAssignment = assignmentsData?.find(
+            (assignment: any) =>
+              assignment.id_deportista === item.id_deportista &&
+              assignment.tipo_trabajador === "entrenador"
           );
-
-          const trabajador = first(activeCoachAssignment?.trabajadores);
-          const coachUser = first(trabajador?.usuarios);
 
           return {
             id_deportista: item.id_deportista,
             name: usuario?.nombre_apellidos || "Deportista",
-            coach: coachUser?.nombre_apellidos || null,
+            coach: coachAssignment?.trabajador_nombre || null,
           };
         }) || [];
 

@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { Text, View } from "react-native";
-
+import { BarChart } from "react-native-gifted-charts";
 import AthleteLayout from "../../src/components/layout/AthleteLayout";
 import AppCard from "../../src/components/ui/AppCard";
 import MetricCard from "../../src/components/ui/MetricCard";
 import SectionTitle from "../../src/components/ui/SectionTitle";
 import { supabase } from "../../src/lib/supabase";
+import { dayOnly } from "../../src/utils/date";
 
 type CycleItem = {
   fecha: string;
@@ -166,13 +167,46 @@ export default function MenstrualCycleScreen() {
           subtitle="Solo días con menstruación activa"
         />
 
-        <SimpleBarChart
-          data={activePeriodData.map((item) => ({
-            label: shortDate(item.fecha),
-            value: item.sangrado || 0,
-          }))}
-          maxValue={10}
-        />
+        {activePeriodData.length > 0 ? (
+          <View className="bg-red-50 rounded-2xl p-4">
+            <BarChart
+              data={activePeriodData.map((item) => ({
+                value: item.sangrado || 0,
+                label: dayOnly(item.fecha),
+              }))}
+              height={180}
+              barWidth={18}
+              spacing={18}
+              initialSpacing={12}
+              endSpacing={12}
+              roundedTop
+              frontColor="#DC2626"
+              maxValue={10}
+              noOfSections={5}
+              yAxisTextStyle={{
+                color: "#6B7280",
+                fontSize: 10,
+              }}
+              xAxisLabelTextStyle={{
+                color: "#6B7280",
+                fontSize: 8,
+              }}
+              xAxisColor="#CBD5E1"
+              yAxisColor="#CBD5E1"
+              rulesColor="#E5E7EB"
+              rulesType="solid"
+              yAxisThickness={1}
+              xAxisThickness={1}
+              yAxisLabelWidth={35}
+            />
+          </View>
+        ) : (
+          <View className="h-44 bg-slate-50 rounded-2xl items-center justify-center">
+            <Text className="text-gray-500">
+              Sin datos suficientes
+            </Text>
+          </View>
+        )}
       </AppCard>
 
       <AppCard className="mb-6">

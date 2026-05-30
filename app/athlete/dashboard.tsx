@@ -1,10 +1,14 @@
 import { useEffect, useState } from "react";
 import { Text, View } from "react-native";
+import { BarChart, LineChart } from "react-native-gifted-charts";
 import AthleteLayout from "../../src/components/layout/AthleteLayout";
 import AppCard from "../../src/components/ui/AppCard";
 import MetricCard from "../../src/components/ui/MetricCard";
 import SectionTitle from "../../src/components/ui/SectionTitle";
 import { supabase } from "../../src/lib/supabase";
+import {
+  shortDate
+} from "../../src/utils/date";
 
 type TrainingItem = {
   tipo_entrenamiento: string | null;
@@ -31,6 +35,14 @@ export default function AthleteDashboard() {
   });
 
   const [recentTrainings, setRecentTrainings] = useState<TrainingItem[]>([]);
+  
+  const [sleepChartData, setSleepChartData] = useState<
+    { value: number; label: string }[]
+  >([]);
+
+  const [heartChartData, setHeartChartData] = useState<
+    { value: number; label: string }[]
+  >([]);
 
   useEffect(() => {
     loadDashboard();
@@ -97,6 +109,7 @@ export default function AthleteDashboard() {
     }
 
     const rows = registers || [];
+    const orderedRows = rows.slice().reverse();
 
     const trainings = rows
       .map((r: any) => first(r.entrenamientos))
@@ -162,6 +175,37 @@ export default function AthleteDashboard() {
     });
 
     setRecentTrainings(trainings.slice(0, 3));
+
+    setSleepChartData(
+      orderedRows
+        .map((r: any) => {
+          const sleep = first(r.suenos);
+
+          if (!sleep?.horas_de_sueno) return null;
+
+          return {
+            value: Number(sleep.horas_de_sueno),
+            label: shortDate(r.fecha),
+          };
+        })
+        .filter(Boolean) as { value: number; label: string }[]
+    );
+
+    setHeartChartData(
+      orderedRows
+        .map((r: any) => {
+          const heart = first(r.frecuencias_cardiacas);
+
+          if (!heart?.hrv) return null;
+
+          return {
+            value: Number(heart.hrv),
+            label: shortDate(r.fecha),
+          };
+        })
+        .filter(Boolean) as { value: number; label: string }[]
+    );
+
     setLoading(false);
   }
 
@@ -233,26 +277,84 @@ export default function AthleteDashboard() {
           subtitle="Últimos 7 días"
         />
 
-        <View className="h-36 bg-blue-50 rounded-2xl items-center justify-center">
-          <Text className="text-blue-600 font-semibold">
-            Gráfico HRV / FC reposo
-          </Text>
-          <Text className="text-blue-500 text-sm mt-1">
-            Pendiente de librería de gráficos
-          </Text>
+        <View className="bg-blue-50 rounded-2xl p-4">
+          {heartChartData.length > 0 ? (
+            <LineChart
+              data={heartChartData}
+              height={150}
+              curved
+              areaChart
+              initialSpacing={12}
+              endSpacing={12}
+              startFillColor="#3B82F6"
+              endFillColor="#DBEAFE"
+              startOpacity={0.4}
+              endOpacity={0.05}
+              color="#2563EB"
+              thickness={3}
+              dataPointsColor="#2563EB"
+
+              xAxisColor="#CBD5E1"
+              yAxisColor="#CBD5E1"
+
+              yAxisThickness={1}
+              xAxisThickness={1}
+
+              rulesColor="#E5E7EB"
+              rulesType="solid"
+
+              yAxisTextStyle={{
+                color: "#6B7280",
+                fontSize: 10,
+              }}
+
+              xAxisLabelTextStyle={{
+                color: "#6B7280",
+                fontSize: 9,
+              }}
+
+              noOfSections={5}
+              maxValue={100}
+            />
+          ) : (
+            <Text className="text-blue-600 font-semibold text-center">
+              Sin datos suficientes
+            </Text>
+          )}
         </View>
       </AppCard>
 
       <AppCard className="mb-6">
         <SectionTitle title="Tendencia de sueño" subtitle="Últimos 7 días" />
 
-        <View className="h-36 bg-teal-50 rounded-2xl items-center justify-center">
-          <Text className="text-teal-600 font-semibold">
-            Gráfico de sueño
-          </Text>
-          <Text className="text-teal-500 text-sm mt-1">
-            Pendiente de librería de gráficos
-          </Text>
+        <View className="bg-teal-50 rounded-2xl p-4">
+          {sleepChartData.length > 0 ? (
+            <BarChart
+              data={sleepChartData}
+              height={150}
+              barWidth={18}
+              spacing={22}
+              initialSpacing={12}
+              endSpacing={12}
+              roundedTop
+              frontColor="#14B8A6"
+              maxValue={10}
+              noOfSections={5}
+              yAxisLabelSuffix="h"
+              yAxisTextStyle={{ color: "#6B7280", fontSize: 10 }}
+              xAxisLabelTextStyle={{ color: "#6B7280", fontSize: 9 }}
+              xAxisColor="#CBD5E1"
+              yAxisColor="#CBD5E1"
+              rulesColor="#E5E7EB"
+              rulesType="solid"
+              yAxisThickness={1}
+              xAxisThickness={1}
+            />
+          ) : (
+            <Text className="text-teal-600 font-semibold text-center">
+              Sin datos suficientes
+            </Text>
+          )}
         </View>
       </AppCard>
 
@@ -349,3 +451,4 @@ function calculateMood(motivation: number, stress: number, irritability: number)
     0.4 * motivation + 0.35 * stressInv + 0.25 * irritabilityInv
   );
 }
+

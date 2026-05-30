@@ -1,10 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { Pressable, Text, View } from "react-native";
+import { BarChart, LineChart, PieChart } from "react-native-gifted-charts";
 import AthleteLayout from "../../src/components/layout/AthleteLayout";
 import AppCard from "../../src/components/ui/AppCard";
 import MetricCard from "../../src/components/ui/MetricCard";
 import SectionTitle from "../../src/components/ui/SectionTitle";
 import { supabase } from "../../src/lib/supabase";
+import {
+  shortDate
+} from "../../src/utils/date";
 
 type TrainingTab = "history" | "trends" | "monthly";
 
@@ -16,6 +20,12 @@ type TrainingItem = {
   carga_de_entrenamiento: number | null;
   notas_entrenamiento: string | null;
 };
+
+function getChartColor(index: number) {
+  const hue = (index * 137.508) % 360;
+
+  return `hsl(${hue}, 70%, 55%)`;
+}
 
 export default function TrainingScreen() {
   const [activeTab, setActiveTab] = useState<TrainingTab>("history");
@@ -222,32 +232,141 @@ export default function TrainingScreen() {
         <View className="gap-5">
           <AppCard>
             <SectionTitle title="Evolución de carga" subtitle="Carga diaria" />
-            <SimpleBarChart
-              data={weeklyData.map((item) => ({
-                label: shortDate(item.fecha),
-                value: item.carga_de_entrenamiento || 0,
-              }))}
-            />
+            {weeklyData.length > 0 ? (
+              <View className="bg-blue-50 rounded-2xl p-4">
+                <BarChart
+                  data={weeklyData
+                    .slice()
+                    .reverse()
+                    .map((item) => ({
+                      value: item.carga_de_entrenamiento || 0,
+                      label: shortDate(item.fecha),
+                    }))}
+                  height={170}
+                  barWidth={18}
+                  spacing={22}
+                  initialSpacing={12}
+                  endSpacing={12}
+                  roundedTop
+                  frontColor="#2563EB"
+                  maxValue={1000}
+                  noOfSections={5}
+                  yAxisLabelSuffix=" AU"
+                  yAxisTextStyle={{
+                    color: "#6B7280",
+                    fontSize: 10,
+                  }}
+                  xAxisLabelTextStyle={{
+                    color: "#6B7280",
+                    fontSize: 9,
+                  }}
+                  xAxisColor="#CBD5E1"
+                  yAxisColor="#CBD5E1"
+                  rulesColor="#E5E7EB"
+                  rulesType="solid"
+                  yAxisThickness={1}
+                  xAxisThickness={1}
+                />
+              </View>
+            ) : (
+              <View className="h-44 bg-slate-50 rounded-2xl items-center justify-center">
+                <Text className="text-gray-500">Sin datos suficientes</Text>
+              </View>
+            )}
           </AppCard>
 
           <AppCard>
             <SectionTitle title="Duración" subtitle="Minutos por sesión" />
-            <SimpleBarChart
-              data={weeklyData.map((item) => ({
-                label: shortDate(item.fecha),
-                value: item.duracion || 0,
-              }))}
-            />
+            <View className="bg-emerald-50 rounded-2xl p-4">
+              <LineChart
+                data={weeklyData
+                  .slice()
+                  .reverse()
+                  .map((item) => ({
+                    value: item.duracion || 0,
+                    label: shortDate(item.fecha),
+                  }))}
+                height={170}
+                curved
+                areaChart
+
+                initialSpacing={12}
+                endSpacing={12}
+
+                startFillColor="#10B981"
+                endFillColor="#D1FAE5"
+                startOpacity={0.4}
+                endOpacity={0.05}
+
+                color="#059669"
+                thickness={3}
+                dataPointsColor="#059669"
+
+                xAxisColor="#CBD5E1"
+                yAxisColor="#CBD5E1"
+
+                yAxisThickness={1}
+                xAxisThickness={1}
+
+                rulesColor="#E5E7EB"
+                rulesType="solid"
+
+                yAxisTextStyle={{
+                  color: "#6B7280",
+                  fontSize: 10,
+                }}
+
+                xAxisLabelTextStyle={{
+                  color: "#6B7280",
+                  fontSize: 9,
+                }}
+
+                noOfSections={5}
+                maxValue={180}
+              />
+            </View>
           </AppCard>
 
           <AppCard>
             <SectionTitle title="Intensidad" subtitle="RPE por sesión" />
-            <SimpleBarChart
-              data={weeklyData.map((item) => ({
-                label: shortDate(item.fecha),
-                value: item.intensidad_percibida || 0,
-              }))}
-            />
+            <View className="bg-amber-50 rounded-2xl p-4">
+              <LineChart
+                data={weeklyData
+                  .slice()
+                  .reverse()
+                  .map((item) => ({
+                    value: item.intensidad_percibida || 0,
+                    label: shortDate(item.fecha),
+                  }))}
+                height={170}
+                areaChart
+                initialSpacing={12}
+                endSpacing={12}
+                startFillColor="#F59E0B"
+                endFillColor="#FEF3C7"
+                startOpacity={0.4}
+                endOpacity={0.05}
+                color="#D97706"
+                thickness={3}
+                dataPointsColor="#D97706"
+                xAxisColor="#CBD5E1"
+                yAxisColor="#CBD5E1"
+                yAxisThickness={1}
+                xAxisThickness={1}
+                rulesColor="#E5E7EB"
+                rulesType="solid"
+                yAxisTextStyle={{
+                  color: "#6B7280",
+                  fontSize: 10,
+                }}
+                xAxisLabelTextStyle={{
+                  color: "#6B7280",
+                  fontSize: 9,
+                }}
+                noOfSections={5}
+                maxValue={10}
+              />
+            </View>
           </AppCard>
         </View>
       )}
@@ -259,33 +378,94 @@ export default function TrainingScreen() {
               title="Resumen mensual"
               subtitle="Carga de entrenamiento por semana"
             />
-            <SimpleBarChart data={weeklyLoad} />
+            {weeklyLoad.some((item) => item.value > 0) ? (
+              <View className="bg-blue-50 rounded-2xl p-4">
+                <BarChart
+                  data={weeklyLoad.map((item) => ({
+                    value: item.value,
+                    label: item.label,
+                  }))}
+                  height={170}
+                  barWidth={28}
+                  spacing={28}
+                  initialSpacing={20}
+                  endSpacing={20}
+                  frontColor="#2563EB"
+                  maxValue={3000}
+                  noOfSections={5}
+                  yAxisLabelSuffix=" AU"
+                  yAxisTextStyle={{
+                    color: "#6B7280",
+                    fontSize: 10,
+                  }}
+                  xAxisLabelTextStyle={{
+                    color: "#6B7280",
+                    fontSize: 10,
+                  }}
+                  xAxisColor="#CBD5E1"
+                  yAxisColor="#CBD5E1"
+                  rulesColor="#E5E7EB"
+                  rulesType="solid"
+                  yAxisThickness={1}
+                  xAxisThickness={1}
+                />
+              </View>
+            ) : (
+              <View className="h-44 bg-slate-50 rounded-2xl items-center justify-center">
+                <Text className="text-gray-500">Sin datos suficientes</Text>
+              </View>
+            )}
           </AppCard>
 
           <AppCard>
             <SectionTitle title="Distribución por tipo" />
 
-            <View className="gap-3">
-              {typeDistribution.length > 0 ? (
-                typeDistribution.map(([type, count]) => (
-                  <View
-                    key={type}
-                    className="flex-row justify-between bg-emerald-50 rounded-2xl p-3"
-                  >
-                    <Text className="font-semibold text-emerald-700">
-                      {type}
-                    </Text>
-                    <Text className="font-bold text-emerald-700">
-                      {count} sesiones
-                    </Text>
-                  </View>
-                ))
-              ) : (
-                <Text className="text-gray-500">
-                  No hay tipos de entrenamiento registrados.
-                </Text>
-              )}
-            </View>
+            {typeDistribution.length > 0 ? (
+              <View className="items-center">
+                <PieChart
+                  donut
+                  radius={90}
+                  innerRadius={55}
+                  focusOnPress
+                  isAnimated
+                  animationDuration={800}
+                  data={typeDistribution.map(([type, count], index) => ({
+                    value: count,
+                    text: type,
+                    color: getChartColor(index),
+                  }))}
+                />
+
+                <View className="mt-6 w-full gap-2">
+                  {typeDistribution.map(([type, count], index) => (
+                    <View
+                      key={type}
+                      className="flex-row items-center justify-between"
+                    >
+                      <View className="flex-row items-center">
+                        <View
+                          style={{
+                            width: 12,
+                            height: 12,
+                            borderRadius: 6,
+                            backgroundColor: getChartColor(index),
+                          }}
+                        />
+                        <Text className="ml-2 text-gray-700">{type}</Text>
+                      </View>
+
+                      <Text className="font-semibold text-gray-700">
+                        {count} sesiones
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            ) : (
+              <Text className="text-gray-500">
+                No hay tipos de entrenamiento registrados.
+              </Text>
+            )}
           </AppCard>
 
           <AppCard>
@@ -396,10 +576,6 @@ function formatDate(date: string) {
   return `${day}/${month}/${year}`;
 }
 
-function shortDate(date: string) {
-  const [, month, day] = date.split("-");
-  return `${day}/${month}`;
-}
 
 function groupLoadByWeek(data: TrainingItem[]) {
   const weeks = [0, 0, 0, 0];

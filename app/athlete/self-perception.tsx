@@ -1,10 +1,17 @@
 import { useEffect, useState } from "react";
 import { Text, View } from "react-native";
+import {
+  BarChart,
+  LineChart
+} from "react-native-gifted-charts";
 import AthleteLayout from "../../src/components/layout/AthleteLayout";
 import AppCard from "../../src/components/ui/AppCard";
 import MetricCard from "../../src/components/ui/MetricCard";
 import SectionTitle from "../../src/components/ui/SectionTitle";
 import { supabase } from "../../src/lib/supabase";
+import {
+  dayOnly
+} from "../../src/utils/date";
 
 type SelfItem = {
   fecha: string;
@@ -132,6 +139,7 @@ export default function SelfPerceptionScreen() {
           subtitle="Media"
           status="normal"
         />
+
       </View>
 
       <View className="mb-6">
@@ -142,21 +150,62 @@ export default function SelfPerceptionScreen() {
           status="normal"
         />
       </View>
+      
 
       <AppCard className="mb-6">
         <SectionTitle
           title="Estado de ánimo actual"
-          subtitle="Motivación, estrés e irritabilidad"
+          subtitle="Perfil actual de autopercepción"
         />
 
         {latest ? (
-          <RadarMock
-            motivation={latest.motivacion || 0}
-            stress={latest.estres || 0}
-            irritability={latest.irritabilidad || 0}
-          />
+          <View className="bg-blue-50 rounded-2xl p-4">
+            <BarChart
+              data={[
+                {
+                  value: latest.motivacion || 0,
+                  label: "Mot.",
+                  frontColor: "#3B82F6",
+                },
+                {
+                  value: latest.estres || 0,
+                  label: "Estrés",
+                  frontColor: "#F59E0B",
+                },
+                {
+                  value: latest.irritabilidad || 0,
+                  label: "Irrit.",
+                  frontColor: "#EF4444",
+                },
+              ]}
+              height={180}
+              barWidth={40}
+              spacing={35}
+              roundedTop
+              maxValue={10}
+              noOfSections={5}
+              yAxisTextStyle={{
+                color: "#6B7280",
+                fontSize: 10,
+              }}
+              xAxisLabelTextStyle={{
+                color: "#6B7280",
+                fontSize: 10,
+              }}
+              xAxisColor="#CBD5E1"
+              yAxisColor="#CBD5E1"
+              rulesColor="#E5E7EB"
+              rulesType="solid"
+              yAxisThickness={1}
+              xAxisThickness={1}
+            />
+          </View>
         ) : (
-          <EmptyBox text="Sin datos de autopercepción" />
+          <View className="h-44 bg-slate-50 rounded-2xl items-center justify-center">
+            <Text className="text-gray-500">
+              Sin datos suficientes
+            </Text>
+          </View>
         )}
       </AppCard>
 
@@ -166,16 +215,77 @@ export default function SelfPerceptionScreen() {
           subtitle="Evolución de los últimos 7 días"
         />
 
-        <GroupedBars
-          data={weeklyData.map((item) => ({
-            label: shortDate(item.fecha),
-            values: [
-              { name: "Motivación", value: item.motivacion || 0 },
-              { name: "Estrés", value: item.estres || 0 },
-              { name: "Irritabilidad", value: item.irritabilidad || 0 },
-            ],
-          }))}
-        />
+        {weeklyData.length > 0 ? (
+          <View className="bg-slate-50 rounded-2xl p-4">
+            <BarChart
+              data={weeklyData
+                .slice()
+                .reverse()
+                .flatMap((item) => [
+                  {
+                    value: item.motivacion || 0,
+                    label: dayOnly(item.fecha),
+                    frontColor: "#3B82F6",
+                    spacing: 2,
+                  },
+                  {
+                    value: item.estres || 0,
+                    frontColor: "#F59E0B",
+                    spacing: 2,
+                  },
+                  {
+                    value: item.irritabilidad || 0,
+                    frontColor: "#EF4444",
+                    spacing: 14,
+                  },
+                ])}
+              height={180}
+              barWidth={10}
+              initialSpacing={12}
+              endSpacing={12}
+              roundedTop
+              maxValue={10}
+              noOfSections={5}
+              yAxisTextStyle={{
+                color: "#6B7280",
+                fontSize: 10,
+              }}
+              xAxisLabelTextStyle={{
+                color: "#6B7280",
+                fontSize: 10,
+              }}
+              xAxisColor="#CBD5E1"
+              yAxisColor="#CBD5E1"
+              rulesColor="#E5E7EB"
+              rulesType="solid"
+              yAxisThickness={1}
+              xAxisThickness={1}
+            />
+
+            <View className="flex-row justify-center gap-4 mt-4">
+              <View className="flex-row items-center">
+                <View className="w-3 h-3 rounded-full bg-blue-500 mr-2" />
+                <Text className="text-xs text-gray-600">Motivación</Text>
+              </View>
+
+              <View className="flex-row items-center">
+                <View className="w-3 h-3 rounded-full bg-amber-500 mr-2" />
+                <Text className="text-xs text-gray-600">Estrés</Text>
+              </View>
+
+              <View className="flex-row items-center">
+                <View className="w-3 h-3 rounded-full bg-red-500 mr-2" />
+                <Text className="text-xs text-gray-600">Irritabilidad</Text>
+              </View>
+            </View>
+          </View>
+        ) : (
+          <View className="h-44 bg-slate-50 rounded-2xl items-center justify-center">
+            <Text className="text-gray-500">
+              Sin datos suficientes
+            </Text>
+          </View>
+        )}
       </AppCard>
 
       <AppCard className="mb-6">
@@ -184,23 +294,83 @@ export default function SelfPerceptionScreen() {
           subtitle="Fatiga física, mental y media"
         />
 
-        <GroupedBars
-          data={weeklyData.map((item) => ({
-            label: shortDate(item.fecha),
-            values: [
-              { name: "Física", value: item.fatiga_fisica || 0 },
-              { name: "Mental", value: item.fatiga_mental || 0 },
-              {
-                name: "Media",
-                value:
-                  item.fatiga_general ||
-                  Math.round(
-                    ((item.fatiga_fisica || 0) + (item.fatiga_mental || 0)) / 2
-                  ),
-              },
-            ],
-          }))}
-        />
+        {weeklyData.length > 0 ? (
+          <View className="bg-slate-50 rounded-2xl p-4">
+            <BarChart
+              data={weeklyData
+                .slice()
+                .reverse()
+                .flatMap((item) => {
+                  const fatigaFisica = item.fatiga_fisica || 0;
+                  const fatigaMental = item.fatiga_mental || 0;
+                  const fatigaMedia = Math.round((fatigaFisica + fatigaMental) / 2);
+
+                  return [
+                    {
+                      value: fatigaFisica,
+                      label: dayOnly(item.fecha),
+                      frontColor: "#3B82F6",
+                      spacing: 2,
+                    },
+                    {
+                      value: fatigaMental,
+                      frontColor: "#e512de",
+                      spacing: 2,
+                    },
+                    {
+                      value: fatigaMedia,
+                      frontColor: "#8B5CF6",
+                      spacing: 14,
+                    },
+                  ];
+                })}
+              height={180}
+              barWidth={10}
+              initialSpacing={12}
+              endSpacing={12}
+              roundedTop
+              maxValue={10}
+              noOfSections={5}
+              yAxisTextStyle={{
+                color: "#6B7280",
+                fontSize: 10,
+              }}
+              xAxisLabelTextStyle={{
+                color: "#6B7280",
+                fontSize: 8,
+              }}
+              xAxisColor="#CBD5E1"
+              yAxisColor="#CBD5E1"
+              rulesColor="#E5E7EB"
+              rulesType="solid"
+              yAxisThickness={1}
+              xAxisThickness={1}
+            />
+
+            <View className="flex-row justify-center gap-4 mt-4">
+              <View className="flex-row items-center">
+                <View className="w-3 h-3 rounded-full bg-blue-500 mr-2" />
+                <Text className="text-xs text-gray-600">Física</Text>
+              </View>
+
+              <View className="flex-row items-center">
+                <View className="w-3 h-3 rounded-full bg-pink-500 mr-2" />
+                <Text className="text-xs text-gray-600">Mental</Text>
+              </View>
+
+              <View className="flex-row items-center">
+                <View className="w-3 h-3 rounded-full bg-violet-500 mr-2" />
+                <Text className="text-xs text-gray-600">Media</Text>
+              </View>
+            </View>
+          </View>
+        ) : (
+          <View className="h-44 bg-slate-50 rounded-2xl items-center justify-center">
+            <Text className="text-gray-500">
+              Sin datos suficientes
+            </Text>
+          </View>
+        )}
       </AppCard>
 
       <AppCard className="mb-6">
@@ -222,7 +392,7 @@ export default function SelfPerceptionScreen() {
 
                 <View className="flex-1 mx-3 h-3 bg-gray-200 rounded-full overflow-hidden">
                   <View
-                    className="h-3 bg-emerald-500 rounded-full"
+                    className="h-3 bg-yellow-500 rounded-full"
                     style={{ width: `${(item.nivel_energia || 0) * 10}%` }}
                   />
                 </View>
@@ -244,13 +414,54 @@ export default function SelfPerceptionScreen() {
           subtitle="Preparación percibida para entrenar"
         />
 
-        <SimpleBarChart
-          data={weeklyData.map((item) => ({
-            label: shortDate(item.fecha),
-            value: item.preparacion_entrenar || 0,
-          }))}
-          maxValue={5}
-        />
+       {weeklyData.length > 0 ? (
+          <View className="bg-emerald-50 rounded-2xl p-4">
+            <LineChart
+              data={weeklyData
+                .slice()
+                .reverse()
+                .map((item) => ({
+                  value: item.preparacion_entrenar || 0,
+                  label: dayOnly(item.fecha),
+                }))}
+              height={180}
+              curved
+              areaChart
+              initialSpacing={12}
+              endSpacing={12}
+              startFillColor="#10B981"
+              endFillColor="#D1FAE5"
+              startOpacity={0.4}
+              endOpacity={0.05}
+              color="#059669"
+              thickness={3}
+              dataPointsColor="#059669"
+              maxValue={10}
+              noOfSections={5}
+              yAxisTextStyle={{
+                color: "#6B7280",
+                fontSize: 10,
+              }}
+              xAxisLabelTextStyle={{
+                color: "#6B7280",
+                fontSize: 8,
+              }}
+              xAxisColor="#CBD5E1"
+              yAxisColor="#CBD5E1"
+              rulesColor="#E5E7EB"
+              rulesType="solid"
+              yAxisThickness={1}
+              xAxisThickness={1}
+              yAxisLabelWidth={35}
+            />
+          </View>
+        ) : (
+          <View className="h-44 bg-slate-50 rounded-2xl items-center justify-center">
+            <Text className="text-gray-500">
+              Sin datos suficientes
+            </Text>
+          </View>
+        )}
       </AppCard>
     </AthleteLayout>
   );
@@ -262,118 +473,6 @@ function calculateMood(motivation: number, stress: number, irritability: number)
 
   return Math.round(
     0.4 * motivation + 0.35 * stressInv + 0.25 * irritabilityInv
-  );
-}
-
-function RadarMock({
-  motivation,
-  stress,
-  irritability,
-}: {
-  motivation: number;
-  stress: number;
-  irritability: number;
-}) {
-  return (
-    <View className="bg-slate-50 rounded-2xl p-5 items-center">
-      <Text className="text-sm text-gray-500 mb-4">
-        Distribución de variables
-      </Text>
-
-      <View className="items-center justify-center">
-        <Text className="text-blue-600 font-bold">
-          Motivación: {motivation}/10
-        </Text>
-        <Text className="text-red-500 font-bold mt-2">
-          Estrés: {stress}/10
-        </Text>
-        <Text className="text-amber-600 font-bold mt-2">
-          Irritabilidad: {irritability}/10
-        </Text>
-      </View>
-    </View>
-  );
-}
-
-function GroupedBars({
-  data,
-}: {
-  data: {
-    label: string;
-    values: { name: string; value: number }[];
-  }[];
-}) {
-  if (data.length === 0) {
-    return <EmptyBox text="Sin datos suficientes" />;
-  }
-
-  return (
-    <View className="h-52 bg-slate-50 rounded-2xl p-4">
-      <View className="flex-row items-end justify-between flex-1">
-        {data.map((item) => (
-          <View key={item.label} className="items-center flex-1">
-            <View className="flex-row items-end gap-1 h-36">
-              {item.values.map((metric, index) => (
-                <View
-                  key={`${item.label}-${metric.name}`}
-                  className={`w-2 rounded-t-xl ${
-                    index === 0
-                      ? "bg-blue-500"
-                      : index === 1
-                      ? "bg-red-400"
-                      : "bg-amber-400"
-                  }`}
-                  style={{ height: metric.value * 12 }}
-                />
-              ))}
-            </View>
-            <Text className="text-[10px] text-gray-400 mt-2">
-              {item.label}
-            </Text>
-          </View>
-        ))}
-      </View>
-    </View>
-  );
-}
-
-function SimpleBarChart({
-  data,
-  maxValue,
-}: {
-  data: { label: string; value: number }[];
-  maxValue: number;
-}) {
-  if (data.length === 0) {
-    return <EmptyBox text="Sin datos suficientes" />;
-  }
-
-  return (
-    <View className="h-44 bg-slate-50 rounded-2xl p-4 flex-row items-end justify-between">
-      {data.map((item, index) => {
-        const height = (item.value / maxValue) * 120;
-
-        return (
-          <View key={`${item.label}-${index}`} className="items-center flex-1">
-            <View
-              className="w-7 bg-blue-500 rounded-t-xl"
-              style={{ height }}
-            />
-            <Text className="text-[10px] text-gray-400 mt-2">
-              {item.label}
-            </Text>
-          </View>
-        );
-      })}
-    </View>
-  );
-}
-
-function EmptyBox({ text }: { text: string }) {
-  return (
-    <View className="h-44 bg-slate-50 rounded-2xl p-4 items-center justify-center">
-      <Text className="text-gray-500">{text}</Text>
-    </View>
   );
 }
 
