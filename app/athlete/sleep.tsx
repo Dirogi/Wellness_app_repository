@@ -136,14 +136,14 @@ export default function SleepScreen() {
           title="Horas anoche"
           value={latest ? formatHours(latest.horas_de_sueno || 0) : "-"}
           subtitle={latest ? "Última medición" : "Sin datos"}
-          status="normal"
+          subtitleVariant="violet"
         />
 
         <MetricCard
           title="Calidad"
           value={latest?.calidad_sueno ? `${latest.calidad_sueno}/10` : "-"}
           subtitle={latest ? "Última medición" : "Sin datos"}
-          status="normal"
+          subtitleVariant="violet"
         />
       </View>
 
@@ -158,14 +158,13 @@ export default function SleepScreen() {
               : "-"
           }
           subtitle="Sueño nocturno"
-          status="normal"
         />
 
         <MetricCard
           title="Despertares"
           value={latest?.numero_despertares ?? "-"}
           subtitle={latest ? "Última medición" : "Sin datos"}
-          status="normal"
+          subtitleVariant="violet"
         />
       </View>
 

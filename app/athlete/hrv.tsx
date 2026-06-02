@@ -89,14 +89,14 @@ export default function HeartRateScreen() {
           title="HRV actual"
           value={latest?.hrv ? `${latest.hrv} ms` : "-"}
           subtitle={latest ? "Última medición" : "Sin datos"}
-          status="normal"
+          subtitleVariant="violet"
         />
 
         <MetricCard
           title="FC en reposo"
           value={latest?.fc_reposo ? `${latest.fc_reposo} bpm` : "-"}
           subtitle={latest ? "Última medición" : "Sin datos"}
-          status="normal"
+          subtitleVariant="violet"
         />
       </View>
 

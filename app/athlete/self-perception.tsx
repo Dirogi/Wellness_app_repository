@@ -130,14 +130,14 @@ export default function SelfPerceptionScreen() {
           title="Estado de ánimo"
           value={latest ? `${moodScore}/10` : "-"}
           subtitle="Actual"
-          status="normal"
+          subtitleVariant="indigo"
         />
 
         <MetricCard
           title="Fatiga"
           value={latest ? `${fatigueScore}/10` : "-"}
           subtitle="Media"
-          status="normal"
+          subtitleVariant="cyan"
         />
 
       </View>
@@ -147,7 +147,7 @@ export default function SelfPerceptionScreen() {
           title="Preparación para entrenar"
           value={latest ? `${latest.preparacion_entrenar || 0}/5` : "-"}
           subtitle="Última medición"
-          status="normal"
+          subtitleVariant="violet"
         />
       </View>
       

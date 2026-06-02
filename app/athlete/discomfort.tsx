@@ -147,6 +147,7 @@ export default function DiscomfortScreen() {
     );
   }
 
+
   return (
     <AthleteLayout title="Molestias">
       <View className="flex-row gap-3 mb-3">
@@ -169,47 +170,57 @@ export default function DiscomfortScreen() {
         />
 
         <View className="gap-3">
-          {discomfortData.length > 0 ? (
-            discomfortData.slice(0, 5).map((item, index) => (
-              <View
-                key={`${item.fecha}-${index}`}
-                className="bg-slate-50 rounded-2xl p-4"
-              >
-                <View className="flex-row justify-between mb-1">
-                  <Text className="font-bold text-gray-900">
-                    {item.zonas.length > 0
-                      ? item.zonas.join(", ")
-                      : "Zona no especificada"}
-                  </Text>
+          {
+            discomfortData.length > 0 ? (
+              discomfortData.slice(0, 5).map((item, index) => {
+                const intensityStyle = getIntensityColor(item.intensidad || 0);
 
-                  <View className="bg-emerald-100 px-3 py-1 rounded-full">
-                    <Text className="text-emerald-700 text-xs font-bold">
-                      {item.intensidad || 0}/10 ·{" "}
-                      {getIntensityLabel(item.intensidad || 0)}
+                return (
+                  <View
+                    key={`${item.fecha}-${index}`}
+                    className="bg-slate-50 rounded-2xl p-4"
+                  >
+                    <View className="flex-row justify-between mb-1">
+                      <Text className="font-bold text-gray-900">
+                        {item.zonas.length > 0
+                          ? item.zonas.join(", ")
+                          : "Zona no especificada"}
+                      </Text>
+
+                      <View
+                        className={`${intensityStyle.bg} px-3 py-1 rounded-full`}
+                      >
+                        <Text
+                          className={`${intensityStyle.text} text-xs font-bold`}
+                        >
+                          {item.intensidad || 0}/10 ·{" "}
+                          {getIntensityLabel(item.intensidad || 0)}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <Text className="text-gray-500 text-sm">
+                      {formatDate(item.fecha)}
+                    </Text>
+
+                    {item.notas_molestias && (
+                      <Text className="text-gray-700 text-sm mt-2">
+                        {item.notas_molestias}
+                      </Text>
+                    )}
+
+                    <Text className="text-blue-600 text-sm font-semibold mt-1">
+                      {item.tipo_molestia || "Sin tipo"}
                     </Text>
                   </View>
-                </View>
-
-                <Text className="text-gray-500 text-sm">
-                  {formatDate(item.fecha)}
-                </Text>
-
-                {item.notas_molestias && (
-                  <Text className="text-gray-700 text-sm mt-2">
-                    {item.notas_molestias}
-                  </Text>
-                )}
-
-                <Text className="text-blue-600 text-sm font-semibold mt-1">
-                  {item.tipo_molestia || "Sin tipo"}
-                </Text>
-              </View>
-            ))
-          ) : (
-            <Text className="text-gray-500">
-              No hay molestias registradas.
-            </Text>
-          )}
+                );
+              })
+            ) : (
+              <Text className="text-gray-500">
+                No hay molestias registradas.
+              </Text>
+            )
+          }
         </View>
       </AppCard>
 
@@ -236,7 +247,9 @@ export default function DiscomfortScreen() {
                   <Text className="font-semibold text-gray-800">{area}</Text>
                 </View>
 
-                <Text className="text-gray-500 text-sm">{count} veces</Text>
+                <Text className="text-gray-500 text-sm">
+                  {count} {count === 1 ? "vez" : "veces"}
+                </Text>
               </View>
             ))
           ) : (
@@ -293,6 +306,27 @@ function getIntensityLabel(intensity: number) {
   if (intensity <= 3) return "Leve";
   if (intensity <= 6) return "Moderada";
   return "Alta";
+}
+
+function getIntensityColor(intensity: number) {
+  if (intensity <= 3) {
+    return {
+      bg: "bg-emerald-100",
+      text: "text-emerald-700",
+    };
+  }
+
+  if (intensity <= 6) {
+    return {
+      bg: "bg-amber-100",
+      text: "text-amber-700",
+    };
+  }
+
+  return {
+    bg: "bg-red-100",
+    text: "text-red-700",
+  };
 }
 
 function formatDate(date: string) {

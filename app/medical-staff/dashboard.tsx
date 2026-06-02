@@ -132,7 +132,7 @@ export default function MedicalStaffDashboard() {
           title="Deportistas asignados"
           value={athletes.length}
           subtitle="Activos"
-          status="normal"
+          subtitleVariant="fuchsia"
         />
       </View>
 
@@ -144,28 +144,33 @@ export default function MedicalStaffDashboard() {
 
         <View className="gap-3">
           {athletesWithDiscomfort.length > 0 ? (
-            athletesWithDiscomfort.map((athlete) => (
-              <View
-                key={athlete.id_deportista}
-                className="bg-slate-50 rounded-2xl p-4"
-              >
-                <View className="flex-row justify-between items-center mb-1">
-                  <Text className="font-bold text-gray-900">
-                    {athlete.name}
-                  </Text>
+            athletesWithDiscomfort.map((athlete) => {
+              const intensity = athlete.discomfort?.intensity || 0;
+              const intensityStyle = getIntensityColor(intensity);
 
-                  <View className="bg-amber-100 rounded-full px-3 py-1">
-                    <Text className="text-amber-700 text-xs font-bold">
-                      {athlete.discomfort?.intensity}/10
+              return (
+                <View
+                  key={athlete.id_deportista}
+                  className="bg-slate-50 rounded-2xl p-4"
+                >
+                  <View className="flex-row justify-between items-center mb-1">
+                    <Text className="font-bold text-gray-900">
+                      {athlete.name}
                     </Text>
-                  </View>
-                </View>
 
-                <Text className="text-gray-500">
-                  Molestia: {athlete.discomfort?.type}
-                </Text>
-              </View>
-            ))
+                    <View className={`${intensityStyle.bg} rounded-full px-3 py-1`}>
+                      <Text className={`${intensityStyle.text} text-xs font-bold`}>
+                        {intensity}/10
+                      </Text>
+                    </View>
+                  </View>
+
+                  <Text className="text-gray-500">
+                    Molestia: {athlete.discomfort?.type}
+                  </Text>
+                </View>
+              );
+            })
           ) : (
             <Text className="text-gray-500">
               No hay deportistas con molestias registradas.
@@ -240,4 +245,25 @@ export default function MedicalStaffDashboard() {
 function first(value: any) {
   if (Array.isArray(value)) return value[0];
   return value;
+}
+
+function getIntensityColor(intensity: number) {
+  if (intensity <= 4) {
+    return {
+      bg: "bg-emerald-100",
+      text: "text-emerald-700",
+    };
+  }
+
+  if (intensity <= 7) {
+    return {
+      bg: "bg-amber-100",
+      text: "text-amber-700",
+    };
+  }
+
+  return {
+    bg: "bg-red-100",
+    text: "text-red-700",
+  };
 }

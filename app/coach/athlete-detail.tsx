@@ -1,12 +1,13 @@
 import { useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { Pressable, Text, View } from "react-native";
-
+import { BarChart, LineChart } from "react-native-gifted-charts";
 import CoachLayout from "../../src/components/layout/CoachLayout";
 import AppCard from "../../src/components/ui/AppCard";
 import MetricCard from "../../src/components/ui/MetricCard";
 import SectionTitle from "../../src/components/ui/SectionTitle";
 import { supabase } from "../../src/lib/supabase";
+import { dayOnly } from "../../src/utils/date";
 
 type MainTab = "training" | "discomfort";
 type TrainingTab = "history" | "trends" | "monthly";
@@ -371,32 +372,160 @@ export default function CoachAthleteDetailScreen() {
             <View className="gap-5">
               <AppCard>
                 <SectionTitle title="Evolución de carga" />
-                <SimpleBarChart
-                  data={weeklyTraining.map((item) => ({
-                    label: shortDate(item.fecha),
-                    value: item.carga_de_entrenamiento || 0,
-                  }))}
-                />
+                {weeklyTraining.length > 0 ? (
+                  <View className="bg-blue-50 rounded-2xl p-4">
+                    <BarChart
+                      data={weeklyTraining
+                        .slice()
+                        .reverse()
+                        .map((item) => ({
+                          value: item.carga_de_entrenamiento || 0,
+                          label: dayOnly(item.fecha),
+                        }))}
+                      height={170}
+                      barWidth={18}
+                      spacing={22}
+                      initialSpacing={12}
+                      endSpacing={12}
+                      roundedTop
+                      frontColor="#2563EB"
+                      maxValue={1000}
+                      noOfSections={5}
+                      yAxisLabelSuffix=" AU"
+                      yAxisTextStyle={{
+                        color: "#6B7280",
+                        fontSize: 8,
+                      }}
+                      xAxisLabelTextStyle={{
+                        color: "#6B7280",
+                        fontSize: 9,
+                      }}
+                      xAxisColor="#CBD5E1"
+                      yAxisColor="#CBD5E1"
+                      rulesColor="#E5E7EB"
+                      rulesType="solid"
+                      yAxisThickness={1}
+                      xAxisThickness={1}
+                      yAxisLabelWidth={40}
+                    />
+                  </View>
+                ) : (
+                  <View className="h-44 bg-slate-50 rounded-2xl items-center justify-center">
+                    <Text className="text-gray-500">
+                      Sin datos suficientes
+                    </Text>
+                  </View>
+                )}
               </AppCard>
 
               <AppCard>
                 <SectionTitle title="Duración" />
-                <SimpleBarChart
-                  data={weeklyTraining.map((item) => ({
-                    label: shortDate(item.fecha),
-                    value: item.duracion || 0,
-                  }))}
-                />
+                {weeklyTraining.length > 0 ? (
+                  <View className="bg-violet-50 rounded-2xl p-4">
+                    <LineChart
+                      data={weeklyTraining
+                        .slice()
+                        .reverse()
+                        .map((item) => ({
+                          value: item.duracion || 0,
+                          label: dayOnly(item.fecha),
+                        }))}
+                      height={180}
+                      curved
+                      areaChart
+                      initialSpacing={12}
+                      endSpacing={12}
+                      startFillColor="#8B5CF6"
+                      endFillColor="#DDD6FE"
+                      startOpacity={0.4}
+                      endOpacity={0.05}
+                      color="#7C3AED"
+                      thickness={3}
+                      dataPointsColor="#7C3AED"
+                      yAxisLabelSuffix=" min"
+                      maxValue={
+                        Math.max(
+                          ...weeklyTraining.map((item) => item.duracion || 0),
+                          60
+                        )
+                      }
+                      noOfSections={5}
+                      yAxisTextStyle={{
+                        color: "#6B7280",
+                        fontSize: 10,
+                      }}
+                      xAxisLabelTextStyle={{
+                        color: "#6B7280",
+                        fontSize: 8,
+                      }}
+                      xAxisColor="#CBD5E1"
+                      yAxisColor="#CBD5E1"
+                      rulesColor="#E5E7EB"
+                      rulesType="solid"
+                      yAxisThickness={1}
+                      xAxisThickness={1}
+                      yAxisLabelWidth={40}
+                    />
+                  </View>
+                ) : (
+                  <View className="h-44 bg-slate-50 rounded-2xl items-center justify-center">
+                    <Text className="text-gray-500">
+                      Sin datos suficientes
+                    </Text>
+                  </View>
+                )} 
               </AppCard>
 
               <AppCard>
                 <SectionTitle title="Intensidad" />
-                <SimpleBarChart
-                  data={weeklyTraining.map((item) => ({
-                    label: shortDate(item.fecha),
-                    value: item.intensidad_percibida || 0,
-                  }))}
-                />
+                {weeklyTraining.length > 0 ? (
+                  <View className="bg-amber-50 rounded-2xl p-4">
+                    <LineChart
+                      data={weeklyTraining
+                        .slice()
+                        .reverse()
+                        .map((item) => ({
+                          value: item.intensidad_percibida || 0,
+                          label: dayOnly(item.fecha),
+                        }))}
+                      height={180}
+                      curved
+                      areaChart
+                      initialSpacing={12}
+                      endSpacing={12}
+                      startFillColor="#F59E0B"
+                      endFillColor="#FEF3C7"
+                      startOpacity={0.4}
+                      endOpacity={0.05}
+                      color="#D97706"
+                      thickness={3}
+                      dataPointsColor="#D97706"
+                      maxValue={10}
+                      noOfSections={5}
+                      yAxisTextStyle={{
+                        color: "#6B7280",
+                        fontSize: 10,
+                      }}
+                      xAxisLabelTextStyle={{
+                        color: "#6B7280",
+                        fontSize: 8,
+                      }}
+                      xAxisColor="#CBD5E1"
+                      yAxisColor="#CBD5E1"
+                      rulesColor="#E5E7EB"
+                      rulesType="solid"
+                      yAxisThickness={1}
+                      xAxisThickness={1}
+                      yAxisLabelWidth={35}
+                    />
+                  </View>
+                ) : (
+                  <View className="h-44 bg-slate-50 rounded-2xl items-center justify-center">
+                    <Text className="text-gray-500">
+                      Sin datos suficientes
+                    </Text>
+                  </View>
+                )}
               </AppCard>
             </View>
           )}
@@ -408,7 +537,51 @@ export default function CoachAthleteDetailScreen() {
                 subtitle="Carga, distribución y estadísticas"
               />
 
-              <SimpleBarChart data={weeklyLoad} />
+              {weeklyLoad.length > 0 ? (
+                <View className="bg-blue-50 rounded-2xl p-4">
+                  <BarChart
+                    data={weeklyLoad.map((item) => ({
+                      value: item.value,
+                      label: item.label,
+                    }))}
+                    height={180}
+                    barWidth={28}
+                    spacing={28}
+                    initialSpacing={20}
+                    endSpacing={20}
+                    frontColor="#2563EB"
+                    maxValue={
+                      Math.max(
+                        ...weeklyLoad.map((item) => item.value || 0),
+                        1000
+                      )
+                    }
+                    noOfSections={5}
+                    yAxisLabelSuffix=" AU"
+                    yAxisTextStyle={{
+                      color: "#6B7280",
+                      fontSize: 10,
+                    }}
+                    xAxisLabelTextStyle={{
+                      color: "#6B7280",
+                      fontSize: 10,
+                    }}
+                    xAxisColor="#CBD5E1"
+                    yAxisColor="#CBD5E1"
+                    rulesColor="#E5E7EB"
+                    rulesType="solid"
+                    yAxisThickness={1}
+                    xAxisThickness={1}
+                    yAxisLabelWidth={45}
+                  />
+                </View>
+              ) : (
+                <View className="h-44 bg-slate-50 rounded-2xl items-center justify-center">
+                  <Text className="text-gray-500">
+                    Sin datos suficientes
+                  </Text>
+                </View>
+              )}
 
               <View className="mt-5 gap-4">
                 <View className="bg-slate-50 rounded-2xl p-4">
@@ -486,31 +659,44 @@ export default function CoachAthleteDetailScreen() {
 
             <View className="gap-3">
               {discomfortData.length > 0 ? (
-                discomfortData.slice(0, 5).map((item, index) => (
-                  <View
-                    key={`${item.fecha}-${index}`}
-                    className="bg-slate-50 rounded-2xl p-4"
-                  >
-                    <View className="flex-row justify-between mb-1">
-                      <Text className="font-bold text-gray-900">
-                        {item.zonas.length > 0
-                          ? item.zonas.join(", ")
-                          : "Zona no especificada"}
+                discomfortData.slice(0, 5).map((item, index) => {
+                  const intensityStyle = getIntensityColor(
+                    item.intensidad || 0
+                  );
+
+                  return (
+                    <View
+                      key={`${item.fecha}-${index}`}
+                      className="bg-slate-50 rounded-2xl p-4"
+                    >
+                      <View className="flex-row justify-between mb-1">
+                        <Text className="font-bold text-gray-900">
+                          {item.zonas.length > 0
+                            ? item.zonas.join(", ")
+                            : "Zona no especificada"}
+                        </Text>
+
+                        <View
+                          className={`${intensityStyle.bg} rounded-full px-3 py-1`}
+                        >
+                          <Text
+                            className={`${intensityStyle.text} text-xs font-bold`}
+                          >
+                            {item.intensidad || 0}/10
+                          </Text>
+                        </View>
+                      </View>
+
+                      <Text className="text-gray-500">
+                        {formatDate(item.fecha)}
                       </Text>
 
-                      <View className="bg-emerald-100 rounded-full px-3 py-1">
-                        <Text className="text-emerald-700 text-xs font-bold">
-                          {item.intensidad || 0}/10
-                        </Text>
-                      </View>
+                      <Text className="text-blue-600 font-semibold mt-1">
+                        {item.tipo_molestia || "Sin tipo"}
+                      </Text>
                     </View>
-
-                    <Text className="text-gray-500">{formatDate(item.fecha)}</Text>
-                    <Text className="text-blue-600 font-semibold mt-1">
-                      {item.tipo_molestia || "Sin tipo"}
-                    </Text>
-                  </View>
-                ))
+                  );
+                })
               ) : (
                 <Text className="text-gray-500">
                   No hay molestias registradas.
@@ -542,7 +728,9 @@ export default function CoachAthleteDetailScreen() {
                       <Text className="font-semibold text-gray-800">{area}</Text>
                     </View>
 
-                    <Text className="text-gray-500 text-sm">{count} veces</Text>
+                    <Text className="text-gray-500 text-sm">
+                      {count} {count === 1 ? "vez" : "veces"}
+                    </Text>
                   </View>
                 ))
               ) : (
@@ -734,4 +922,25 @@ function groupLoadByWeek(data: TrainingItem[]) {
     label: `S${index + 1}`,
     value,
   }));
+}
+
+function getIntensityColor(intensity: number) {
+  if (intensity <= 4) {
+    return {
+      bg: "bg-emerald-100",
+      text: "text-emerald-700",
+    };
+  }
+
+  if (intensity <= 7) {
+    return {
+      bg: "bg-amber-100",
+      text: "text-amber-700",
+    };
+  }
+
+  return {
+    bg: "bg-red-100",
+    text: "text-red-700",
+  };
 }

@@ -136,7 +136,7 @@ export default function MenstrualCycleScreen() {
           title="Menstruación activa"
           value={latest?.menstruacion_activa ? "Sí" : "No"}
           subtitle={latest ? "Última medición" : "Sin datos"}
-          status={latest?.menstruacion_activa ? "warning" : "normal"}
+          subtitleVariant="violet"
         />
 
         <AppCard className="flex-1 min-h-[105px] items-center">
@@ -155,9 +155,7 @@ export default function MenstrualCycleScreen() {
           title="Dolor menstrual"
           value={`${latestPain}/10`}
           subtitle={latest ? "Última medición" : "Sin datos"}
-          status={
-            latestPain >= 6 ? "danger" : latestPain >= 3 ? "warning" : "good"
-          }
+          subtitleVariant="violet"
         />
       </View>
 

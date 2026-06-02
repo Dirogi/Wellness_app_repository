@@ -1,12 +1,13 @@
 import { useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { Pressable, Text, View } from "react-native";
-
+import { LineChart } from "react-native-gifted-charts";
 import MedicalStaffLayout from "../../src/components/layout/MedicalStaffLayout";
 import AppCard from "../../src/components/ui/AppCard";
 import MetricCard from "../../src/components/ui/MetricCard";
 import SectionTitle from "../../src/components/ui/SectionTitle";
 import { supabase } from "../../src/lib/supabase";
+import { dayOnly } from "../../src/utils/date";
 
 type MainTab = "heart" | "discomfort";
 
@@ -210,7 +211,7 @@ export default function MedicalAthleteDetailScreen() {
               title="HRV actual"
               value={latestHeart?.hrv ? `${latestHeart.hrv} ms` : "-"}
               subtitle={latestHeart ? "Última medición" : "Sin datos"}
-              status="normal"
+              subtitleVariant="violet"
             />
 
             <MetricCard
@@ -219,7 +220,7 @@ export default function MedicalAthleteDetailScreen() {
                 latestHeart?.fc_reposo ? `${latestHeart.fc_reposo} bpm` : "-"
               }
               subtitle={latestHeart ? "Última medición" : "Sin datos"}
-              status="normal"
+              subtitleVariant="violet"
             />
           </View>
 
@@ -229,15 +230,51 @@ export default function MedicalAthleteDetailScreen() {
               subtitle="Evolución semanal de la HRV"
             />
 
-            <SimpleLineChart
-              data={weeklyHeartData.map((item) => ({
-                label: shortDate(item.fecha),
-                value: item.hrv || 0,
-              }))}
-              maxValue={100}
-              color="blue"
-              unit="ms"
-            />
+            {weeklyHeartData.length > 0 ? (
+              <View className="bg-blue-50 rounded-2xl p-4">
+                <LineChart
+                  data={weeklyHeartData.map((item) => ({
+                    value: item.hrv || 0,
+                    label: dayOnly(item.fecha),
+                  }))}
+                  height={180}
+                  curved
+                  areaChart
+                  initialSpacing={12}
+                  endSpacing={12}
+                  startFillColor="#3B82F6"
+                  endFillColor="#DBEAFE"
+                  startOpacity={0.4}
+                  endOpacity={0.05}
+                  color="#2563EB"
+                  thickness={3}
+                  dataPointsColor="#2563EB"
+                  maxValue={100}
+                  noOfSections={5}
+                  yAxisTextStyle={{
+                    color: "#6B7280",
+                    fontSize: 10,
+                  }}
+                  xAxisLabelTextStyle={{
+                    color: "#6B7280",
+                    fontSize: 8,
+                  }}
+                  xAxisColor="#CBD5E1"
+                  yAxisColor="#CBD5E1"
+                  rulesColor="#E5E7EB"
+                  rulesType="solid"
+                  yAxisThickness={1}
+                  xAxisThickness={1}
+                  yAxisLabelWidth={35}
+                />
+              </View>
+            ) : (
+              <View className="h-44 bg-slate-50 rounded-2xl items-center justify-center">
+                <Text className="text-gray-500">
+                  Sin datos suficientes
+                </Text>
+              </View>
+            )}
           </AppCard>
 
           <AppCard className="mb-6">
@@ -246,15 +283,51 @@ export default function MedicalAthleteDetailScreen() {
               subtitle="Evolución semanal"
             />
 
-            <SimpleLineChart
-              data={weeklyHeartData.map((item) => ({
-                label: shortDate(item.fecha),
-                value: item.fc_reposo || 0,
-              }))}
-              maxValue={100}
-              color="red"
-              unit="bpm"
-            />
+            {weeklyHeartData.length > 0 ? (
+              <View className="bg-red-50 rounded-2xl p-4">
+                <LineChart
+                  data={weeklyHeartData.map((item) => ({
+                    value: item.fc_reposo || 0,
+                    label: dayOnly(item.fecha),
+                  }))}
+                  height={180}
+                  curved
+                  areaChart
+                  initialSpacing={12}
+                  endSpacing={12}
+                  startFillColor="#EF4444"
+                  endFillColor="#FEE2E2"
+                  startOpacity={0.4}
+                  endOpacity={0.05}
+                  color="#DC2626"
+                  thickness={3}
+                  dataPointsColor="#DC2626"
+                  maxValue={100}
+                  noOfSections={5}
+                  yAxisTextStyle={{
+                    color: "#6B7280",
+                    fontSize: 10,
+                  }}
+                  xAxisLabelTextStyle={{
+                    color: "#6B7280",
+                    fontSize: 8,
+                  }}
+                  xAxisColor="#CBD5E1"
+                  yAxisColor="#CBD5E1"
+                  rulesColor="#E5E7EB"
+                  rulesType="solid"
+                  yAxisThickness={1}
+                  xAxisThickness={1}
+                  yAxisLabelWidth={35}
+                />
+              </View>
+            ) : (
+              <View className="h-44 bg-slate-50 rounded-2xl items-center justify-center">
+                <Text className="text-gray-500">
+                  Sin datos suficientes
+                </Text>
+              </View>
+            )}
           </AppCard>
 
           <AppCard>
@@ -320,34 +393,44 @@ export default function MedicalAthleteDetailScreen() {
 
             <View className="gap-3">
               {discomfortData.length > 0 ? (
-                discomfortData.slice(0, 5).map((item, index) => (
-                  <View
-                    key={`${item.fecha}-${index}`}
-                    className="bg-slate-50 rounded-2xl p-4"
-                  >
-                    <View className="flex-row justify-between mb-1">
-                      <Text className="font-bold text-gray-900">
-                        {item.zonas.length > 0
-                          ? item.zonas.join(", ")
-                          : "Zona no especificada"}
+                discomfortData.slice(0, 5).map((item, index) => {
+                  const intensityStyle = getIntensityColor(
+                    item.intensidad || 0
+                  );
+
+                  return (
+                    <View
+                      key={`${item.fecha}-${index}`}
+                      className="bg-slate-50 rounded-2xl p-4"
+                    >
+                      <View className="flex-row justify-between mb-1">
+                        <Text className="font-bold text-gray-900">
+                          {item.zonas.length > 0
+                            ? item.zonas.join(", ")
+                            : "Zona no especificada"}
+                        </Text>
+
+                        <View
+                          className={`${intensityStyle.bg} rounded-full px-3 py-1`}
+                        >
+                          <Text
+                            className={`${intensityStyle.text} text-xs font-bold`}
+                          >
+                            {item.intensidad || 0}/10
+                          </Text>
+                        </View>
+                      </View>
+
+                      <Text className="text-gray-500">
+                        {formatDate(item.fecha)}
                       </Text>
 
-                      <View className="bg-emerald-100 rounded-full px-3 py-1">
-                        <Text className="text-emerald-700 text-xs font-bold">
-                          {item.intensidad || 0}/10
-                        </Text>
-                      </View>
+                      <Text className="text-blue-600 font-semibold mt-1">
+                        {item.tipo_molestia || "Sin tipo"}
+                      </Text>
                     </View>
-
-                    <Text className="text-gray-500">
-                      {formatDate(item.fecha)}
-                    </Text>
-
-                    <Text className="text-blue-600 font-semibold mt-1">
-                      {item.tipo_molestia || "Sin tipo"}
-                    </Text>
-                  </View>
-                ))
+                  );
+                })
               ) : (
                 <Text className="text-gray-500">
                   No hay molestias registradas.
@@ -381,7 +464,9 @@ export default function MedicalAthleteDetailScreen() {
                       </Text>
                     </View>
 
-                    <Text className="text-gray-500 text-sm">{count} veces</Text>
+                    <Text className="text-gray-500 text-sm">
+                      {count} {count === 1 ? "vez" : "veces"}
+                    </Text>
                   </View>
                 ))
               ) : (
@@ -557,4 +642,25 @@ function formatDate(date: string) {
 function shortDate(date: string) {
   const [, month, day] = date.split("-");
   return `${day}/${month}`;
+}
+
+function getIntensityColor(intensity: number) {
+  if (intensity <= 4) {
+    return {
+      bg: "bg-emerald-100",
+      text: "text-emerald-700",
+    };
+  }
+
+  if (intensity <= 7) {
+    return {
+      bg: "bg-amber-100",
+      text: "text-amber-700",
+    };
+  }
+
+  return {
+    bg: "bg-red-100",
+    text: "text-red-700",
+  };
 }
