@@ -1,6 +1,6 @@
 import { router } from "expo-router";
 import { useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Alert, Pressable, Text, View } from "react-native";
 import AppButton from "../../src/components/ui/AppButton";
 import AppInput from "../../src/components/ui/AppInput";
 import SectionTitle from "../../src/components/ui/SectionTitle";
@@ -26,6 +26,7 @@ export default function LoginScreen() {
     .select(`
       id_usuario,
       nombre_apellidos,
+      id_estado_cuenta,
       roles(
         nombre_rol
       )
@@ -35,6 +36,17 @@ export default function LoginScreen() {
 
     if (userError || !usuario) {
       console.log(userError?.message);
+      return;
+    }
+
+    if (usuario.id_estado_cuenta !== 2) {
+      await supabase.auth.signOut();
+
+      Alert.alert(
+        "Cuenta no disponible",
+        "Esta cuenta no está activa. Contacta con el administrador."
+      );
+
       return;
     }
 

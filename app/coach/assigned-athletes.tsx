@@ -46,7 +46,8 @@ export default function AssignedAthletesScreen() {
         id_deportista,
         deportistas(
           usuarios(
-            nombre_apellidos
+            nombre_apellidos,
+            id_estado_cuenta
           )
         )
       `)
@@ -60,7 +61,14 @@ export default function AssignedAthletesScreen() {
     }
 
     const formatted =
-      data?.map((item: any) => {
+    data
+      ?.filter((item: any) => {
+        const deportista = first(item.deportistas);
+        const usuario = first(deportista?.usuarios);
+
+        return usuario?.id_estado_cuenta === 2;
+      })
+      .map((item: any) => {
         const deportista = first(item.deportistas);
         const usuario = first(deportista?.usuarios);
 

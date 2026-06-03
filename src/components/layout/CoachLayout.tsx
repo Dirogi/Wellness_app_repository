@@ -1,4 +1,5 @@
 import { router } from "expo-router";
+import { StatusBar } from "expo-status-bar";
 import { ReactNode, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 
@@ -19,6 +20,7 @@ export default function CoachLayout({ children, title }: CoachLayoutProps) {
 
   return (
     <View className="flex-1 bg-slate-50">
+      <StatusBar style="dark" />
       <Pressable
         onPress={() => setIsSidebarOpen(!isSidebarOpen)}
         className="absolute top-12 left-5 z-50 w-24 h-16 rounded-3xl bg-white items-center justify-center shadow border border-gray-100"

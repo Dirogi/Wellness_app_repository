@@ -55,7 +55,8 @@ export default function MedicalStaffAthletesScreen() {
         id_deportista,
         usuarios(
           nombre_apellidos,
-          id_centro
+          id_centro,
+          id_estado_cuenta
         )
       `);
 
@@ -74,10 +75,14 @@ export default function MedicalStaffAthletesScreen() {
 
     const formatted =
       athletesData
-        ?.filter(
-          (item: any) =>
-            first(item.usuarios)?.id_centro === currentUser.id_centro
-        )
+        ?.filter((item: any) => {
+          const usuario = first(item.usuarios);
+
+          return (
+            usuario?.id_centro === currentUser.id_centro &&
+            usuario?.id_estado_cuenta === 2
+          );
+        })
         .map((item: any) => {
           const usuario = first(item.usuarios);
 

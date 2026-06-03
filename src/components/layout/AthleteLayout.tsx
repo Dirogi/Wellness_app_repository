@@ -7,6 +7,7 @@ import {
 } from "react-native";
 
 import { router } from "expo-router";
+import { StatusBar } from "expo-status-bar";
 
 type AthleteLayoutProps = {
   children: ReactNode;
@@ -38,8 +39,10 @@ export default function AthleteLayout({
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   return (
-    //<View className="flex-1 bg-slate-50">
-    <View className="flex-1" style={{ backgroundColor: "#758d60" }}>
+    
+    <View className="flex-1 bg-slate-50">
+      <StatusBar style="dark" />
+  
       {/* BOTÓN MENÚ */}
       <Pressable
         onPress={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -95,10 +98,7 @@ export default function AthleteLayout({
         showsVerticalScrollIndicator={false}
       >
         {title && (
-          /*<Text className="text-4xl font-bold text-gray-900 mb-5 ml-16">
-            {title}
-          </Text>*/
-          <Text className="text-4xl font-bold text-white mb-5 ml-16">
+          <Text className="text-4xl font-bold text-gray-900 mb-5 ml-16">
             {title}
           </Text>
         )}

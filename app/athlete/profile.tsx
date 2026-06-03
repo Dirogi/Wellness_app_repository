@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-import { Text, TextInput, TouchableOpacity, View } from "react-native";
-
+import { Alert, Text, TextInput, TouchableOpacity, View } from "react-native";
 import AthleteLayout from "../../src/components/layout/AthleteLayout";
 import AppButton from "../../src/components/ui/AppButton";
 import AppCard from "../../src/components/ui/AppCard";
@@ -123,6 +122,102 @@ export default function AthleteProfileScreen() {
 
     setEditing(false);
     console.log("Perfil actualizado correctamente");
+  }
+
+  async function handleDeleteAccount() {
+    if (!idUsuario) return;
+
+    Alert.alert(
+      "Eliminar cuenta",
+      "Esta acción desactivará tu cuenta y cerrará la sesión. ¿Seguro que quieres continuar?",
+      [
+        {
+          text: "Cancelar",
+          style: "cancel",
+        },
+        {
+          text: "Eliminar",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              
+              const { data: deportistaData, error: deportistaError } =
+                await supabase
+                  .from("deportistas")
+                  .select("id_deportista")
+                  .eq("id_usuario", idUsuario)
+                  .single();
+
+              if (deportistaError || !deportistaData) {
+                Alert.alert(
+                  "Error",
+                  "No se ha encontrado el deportista."
+                );
+                return;
+              }
+
+              
+              // Desactivar asignaciones
+              const { error: asignacionesError } = await supabase.rpc(
+                "desactivar_asignaciones_deportista",
+                {
+                  p_id_usuario: idUsuario,
+                }
+              );
+
+              if (asignacionesError) {
+                console.log(
+                  "Error desactivando asignaciones:",
+                  asignacionesError.message
+                );
+
+                Alert.alert(
+                  "Error",
+                  "No se han podido desactivar las asignaciones."
+                );
+
+                return;
+              }
+              // Obtener estado eliminada
+              const { data: estadoEliminada } =
+                await supabase
+                  .from("estados_cuenta")
+                  .select("id_estado_cuenta")
+                  .eq("nombre_estado", "bloqueada")
+                  .single();
+
+              // Desactivar cuenta
+              const { error } = await supabase
+                .from("usuarios")
+                .update({
+                  id_estado_cuenta:
+                    estadoEliminada?.id_estado_cuenta,
+                  updated_at: new Date().toISOString(),
+                })
+                .eq("id_usuario", idUsuario);
+
+              if (error) {
+                Alert.alert(
+                  "Error",
+                  "No se ha podido eliminar la cuenta."
+                );
+                return;
+              }
+
+              // Cerrar sesión
+              await logout();
+            } catch (error) {
+              console.log(error);
+
+              Alert.alert(
+                "Error",
+                "Ha ocurrido un error inesperado."
+              );
+            }
+          },
+        },
+      ]
+    );
   }
 
   function updateField(key: string, value: string | boolean) {
@@ -257,7 +352,7 @@ export default function AthleteProfileScreen() {
 
         <View className="gap-4">
           <AppButton title="Cerrar sesión" onPress={logout} />
-          <AppButton title="Eliminar cuenta" variant="danger" onPress={() => {}} />
+          <AppButton title="Eliminar cuenta" variant="danger" onPress={handleDeleteAccount} />
         </View>
       </AppCard>
     </AthleteLayout>
