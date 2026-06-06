@@ -320,21 +320,35 @@ export default function AthleteProfileScreen() {
 
         <View className="flex-row gap-4">
           <TouchableOpacity
+            disabled={!editing}
             onPress={() => updateField("menstrualEnabled", true)}
             className={`p-3 rounded-2xl ${
               profile.menstrualEnabled ? "bg-green-100" : "bg-gray-100"
             }`}
-            style={{ opacity: profile.menstrualEnabled ? 1 : 0.4 }}
+            style={{
+              opacity: editing
+                ? profile.menstrualEnabled
+                  ? 1
+                  : 0.4
+                : 0.9,
+            }}
           >
             <Text className="text-3xl">✅</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
+            disabled={!editing}
             onPress={() => updateField("menstrualEnabled", false)}
             className={`p-3 rounded-2xl ${
               !profile.menstrualEnabled ? "bg-red-100" : "bg-gray-100"
             }`}
-            style={{ opacity: !profile.menstrualEnabled ? 1 : 0.4 }}
+            style={{
+              opacity: editing
+                ? !profile.menstrualEnabled
+                  ? 1
+                  : 0.4
+                : 0.9,
+            }}
           >
             <Text className="text-3xl">❌</Text>
           </TouchableOpacity>

@@ -31,7 +31,7 @@ export default function ActivateAccountScreen() {
 
     const normalizedEmail = email.trim().toLowerCase();
 
-    const { data: preUser, error: preUserError } = await supabase
+    const { data: workerPreUser } = await supabase
       .from("trabajadores_pre_registro")
       .select(`
         id_pre_registro,
@@ -41,12 +41,18 @@ export default function ActivateAccountScreen() {
         )
       `)
       .eq("correo_electronico", normalizedEmail)
-      .single();
+      .maybeSingle();
 
-    if (preUserError || !preUser) {
-      console.log("Error buscando pre-registro:", preUserError?.message);
-      console.log("Pre-registro encontrado:", preUser);
+    const { data: adminPreUser } = await supabase
+      .from("admins_pre_registro")
+      .select(`
+        id_pre_registro,
+        id_estado_cuenta
+      `)
+      .eq("correo_electronico", normalizedEmail)
+      .maybeSingle();
 
+    if (!workerPreUser && !adminPreUser) {
       Alert.alert(
         "Cuenta no encontrada",
         "No existe ninguna cuenta pendiente asociada a este correo."
@@ -54,22 +60,32 @@ export default function ActivateAccountScreen() {
       return;
     }
 
-    const rol = (preUser.roles as any)?.nombre_rol;
-
-    if (rol !== "entrenador" && rol !== "staff_medico") {
+    if (workerPreUser && workerPreUser.id_estado_cuenta !== 1) {
       Alert.alert(
-        "Cuenta no válida",
-        "Solo los trabajadores pueden activar cuentas desde esta pantalla."
+        "Cuenta no disponible",
+        "Esta cuenta de trabajador ya ha sido configurada o no está pendiente de activación."
       );
       return;
     }
 
-    if (preUser.id_estado_cuenta !== 1) {
+    if (adminPreUser && adminPreUser.id_estado_cuenta !== 1) {
       Alert.alert(
         "Cuenta no disponible",
-        "Esta cuenta ya ha sido configurada o no está pendiente de activación."
+        "Esta cuenta de administrador ya ha sido configurada o no está pendiente de activación."
       );
       return;
+    }
+
+    if (workerPreUser) {
+      const rol = (workerPreUser.roles as any)?.nombre_rol;
+
+      if (rol !== "entrenador" && rol !== "staff_medico") {
+        Alert.alert(
+          "Cuenta no válida",
+          "Solo los trabajadores pueden activar cuentas desde esta pantalla."
+        );
+        return;
+      }
     }
 
     const { data: authData, error: authError } =
@@ -86,30 +102,66 @@ export default function ActivateAccountScreen() {
       return;
     }
 
-    const { error: activationError } = await supabase.rpc(
-      "activar_trabajador_pre_registrado",
-      {
-        p_correo: normalizedEmail,
-        p_id_usuario: authData.user.id,
-      }
-    );
+    if (workerPreUser) {
+      const { error: activationError } = await supabase.rpc(
+        "activar_trabajador_pre_registrado",
+        {
+          p_correo: normalizedEmail,
+          p_id_usuario: authData.user.id,
+        }
+      );
 
-    if (activationError) {
-      console.log("Error activando trabajador:", activationError.message);
+      if (activationError) {
+        console.log(
+          "Error activando trabajador:",
+          activationError.message
+        );
+
+        Alert.alert(
+          "Error",
+          activationError.message
+        );
+        return;
+      }
 
       Alert.alert(
-        "Error",
-        activationError.message
+        "Solicitud enviada",
+        "Tu cuenta ha sido configurada correctamente. Ahora debe ser aprobada por el administrador antes de poder iniciar sesión."
       );
+
+      router.replace("/auth/login");
       return;
     }
 
-    Alert.alert(
-      "Solicitud enviada",
-      "Tu cuenta ha sido configurada correctamente. Ahora debe ser aprobada por el administrador antes de poder iniciar sesión."
-    );
+    if (adminPreUser) {
+      const { error: activationError } = await supabase.rpc(
+        "activar_admin_pre_registrado",
+        {
+          p_correo: normalizedEmail,
+          p_id_usuario: authData.user.id,
+        }
+      );
 
-    router.replace("/auth/login");
+      if (activationError) {
+        console.log(
+          "Error activando admin:",
+          activationError.message
+        );
+
+        Alert.alert(
+          "Error",
+          activationError.message
+        );
+        return;
+      }
+
+      Alert.alert(
+        "Cuenta activada",
+        "Tu cuenta de administrador ha sido configurada correctamente. Ya puedes iniciar sesión."
+      );
+
+      router.replace("/auth/login");
+    }
   }
 
   return (
@@ -127,7 +179,7 @@ export default function ActivateAccountScreen() {
       </Text>
 
       <Text className="text-gray-500 text-center mb-10">
-        Activación de cuenta de trabajador
+        Activación de cuenta de trabajador o admin
       </Text>
 
       <View className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">

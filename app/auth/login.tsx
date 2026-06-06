@@ -60,6 +60,8 @@ export default function LoginScreen() {
       router.replace("/medical-staff/dashboard");
     } else if (rol === "admin") {
       router.replace("/admin/dashboard");
+    } else if (rol === "superadmin") {
+      router.replace("/superadmin/dashboard" as never);
     }
   }
 

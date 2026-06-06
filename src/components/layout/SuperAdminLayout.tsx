@@ -1,82 +1,31 @@
-import { ReactNode, useEffect, useState } from "react";
-import {
-  Pressable,
-  ScrollView,
-  Text,
-  View,
-} from "react-native";
-
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { supabase } from "../../lib/supabase";
+import { ReactNode, useState } from "react";
+import { Pressable, ScrollView, Text, View } from "react-native";
 
-type AthleteLayoutProps = {
+type SuperAdminLayoutProps = {
   children: ReactNode;
   title?: string;
 };
 
-type MenuItem = {
-  label: string;
-  icon: string;
-  route: string;
-};
-
-const menuItems: MenuItem[] = [
-  { label: "Dashboard", icon: "🏠", route: "/athlete/dashboard" },
-  { label: "Registro", icon: "📝", route: "/athlete/daily-register" },
-  { label: "Entreno", icon: "🏋️", route: "/athlete/training" },
-  { label: "Sueño", icon: "🌙", route: "/athlete/sleep" },
-  { label: "Frecuencia Cardiaca", icon: "❤️", route: "/athlete/hrv" },
-  { label: "Auto percepción", icon: "🙂", route: "/athlete/self-perception" },
-  { label: "Molestias", icon: "⚠️", route: "/athlete/discomfort" },
-  { label: "Ciclo", icon: "📅", route: "/athlete/menstrual-cycle" },
-  { label: "Perfil", icon: "👤", route: "/athlete/profile" },
+const menuItems = [
+  { label: "Dashboard", icon: "🏠", route: "/superadmin/dashboard" },
+  { label: "Ciudades", icon: "🌆", route: "/superadmin/cities" },
+  { label: "Centros", icon: "🏢", route: "/superadmin/centers" },
+  { label: "Admins", icon: "🛡️", route: "/superadmin/admins" },
+  { label: "Perfil", icon: "👤", route: "/superadmin/profile" },
 ];
 
-export default function AthleteLayout({
+export default function SuperAdminLayout({
   children,
   title,
-}: AthleteLayoutProps) {
+}: SuperAdminLayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [menstrualEnabled, setMenstrualEnabled] = useState(false);
-
-  useEffect(() => {
-  loadMenstrualOption();
-}, []);
-
-  async function loadMenstrualOption() {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) return;
-
-    const { data, error } = await supabase
-      .from("deportistas")
-      .select("opcion_ciclo_menstrual")
-      .eq("id_usuario", user.id)
-      .single();
-
-    if (error || !data) {
-      console.log("Error cargando opción ciclo:", error?.message);
-      return;
-    }
-
-    setMenstrualEnabled(data.opcion_ciclo_menstrual === true);
-  }
-
-  const visibleMenuItems = menstrualEnabled
-    ? menuItems
-    : menuItems.filter(
-        (item) => item.route !== "/athlete/menstrual-cycle"
-      );
 
   return (
-    
     <View className="flex-1 bg-slate-50">
       <StatusBar style="dark" />
-  
-      {/* BOTÓN MENÚ */}
+
       <Pressable
         onPress={() => setIsSidebarOpen(!isSidebarOpen)}
         className="absolute top-12 left-5 z-50 w-24 h-16 rounded-3xl bg-white items-center justify-center shadow border border-gray-100"
@@ -84,7 +33,6 @@ export default function AthleteLayout({
         <Text className="text-3xl">☰</Text>
       </Pressable>
 
-      {/* OVERLAY OSCURO */}
       {isSidebarOpen && (
         <Pressable
           className="absolute inset-0 bg-black/20 z-40"
@@ -92,7 +40,6 @@ export default function AthleteLayout({
         />
       )}
 
-      {/* SIDEBAR */}
       {isSidebarOpen && (
         <View className="absolute left-5 top-12 w-24 bg-white z-50 rounded-3xl pt-4 pb-4 items-center shadow-xl border border-gray-100">
           <Pressable
@@ -101,8 +48,8 @@ export default function AthleteLayout({
           >
             <Text className="text-3xl">☰</Text>
           </Pressable>
-          
-          {visibleMenuItems.map((item) => (
+
+          {menuItems.map((item) => (
             <Pressable
               key={item.route}
               onPress={() => {
@@ -121,7 +68,6 @@ export default function AthleteLayout({
         </View>
       )}
 
-      {/* CONTENIDO */}
       <ScrollView
         className="flex-1"
         contentContainerStyle={{

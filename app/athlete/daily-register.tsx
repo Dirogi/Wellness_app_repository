@@ -16,19 +16,26 @@ type TabKey =
   | "discomfort"
   | "cycle";
 
-const tabs: { key: TabKey; label: string }[] = [
+/*const tabs: { key: TabKey; label: string }[] = [
   { key: "training", label: "Entrenamiento" },
   { key: "sleep", label: "Sueño" },
   { key: "heart", label: "Frecuencia Cardiaca" },
   { key: "self", label: "Autopercepción" },
   { key: "discomfort", label: "Molestias" },
-  { key: "cycle", label: "Ciclo Menstrual" },
+];*/
+const baseTabs: { key: TabKey; label: string }[] = [
+  { key: "training", label: "Entrenamiento" },
+  { key: "sleep", label: "Sueño" },
+  { key: "heart", label: "Frecuencia Cardiaca" },
+  { key: "self", label: "Autopercepción" },
+  { key: "discomfort", label: "Molestias" },
 ];
 
 
 export default function DailyRegisterScreen() {
   const [activeTab, setActiveTab] = useState<TabKey>("training");
   const [completedTabs, setCompletedTabs] = useState<TabKey[]>([]);
+  const [menstrualEnabled, setMenstrualEnabled] = useState(false);
 
   const [trainingType, setTrainingType] = useState("");
   const [duration, setDuration] = useState("");
@@ -181,8 +188,35 @@ export default function DailyRegisterScreen() {
       );
     }
 
+    async function loadMenstrualOption() {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from("deportistas")
+        .select("opcion_ciclo_menstrual")
+        .eq("id_usuario", user.id)
+        .single();
+
+      if (error || !data) {
+        console.log(
+          "Error cargando opción menstrual:",
+          error?.message
+        );
+        return;
+      }
+
+      setMenstrualEnabled(
+        data.opcion_ciclo_menstrual === true
+      );
+    }
+
     fetchBodyAreas();
     fetchSymptoms();
+    loadMenstrualOption();
   }, []);
 
   function markCompleted() {
@@ -562,6 +596,13 @@ export default function DailyRegisterScreen() {
     console.log("Ciclo menstrual guardado correctamente");
   }
 
+  const tabs = menstrualEnabled
+  ? [
+      ...baseTabs,
+      { key: "cycle" as TabKey, label: "Ciclo Menstrual" },
+    ]
+  : baseTabs;
+  
   return (
     <AthleteLayout title="Registro diario">
       <AppCard className="mb-5">
