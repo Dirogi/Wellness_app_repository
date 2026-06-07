@@ -183,7 +183,7 @@ export default function SuperAdminAdmins() {
               }}
               className={`rounded-2xl p-3 ${
                 selectedCityId === city.id_ciudad
-                  ? "bg-blue-100"
+                  ? "bg-purple-100"
                   : "bg-slate-100"
               }`}
             >
@@ -215,7 +215,7 @@ export default function SuperAdminAdmins() {
                 onPress={() => setSelectedCenterId(center.id_centro)}
                 className={`rounded-2xl p-3 ${
                   selectedCenterId === center.id_centro
-                    ? "bg-blue-100"
+                    ? "bg-purple-100"
                     : "bg-slate-100"
                 }`}
               >
@@ -246,7 +246,7 @@ export default function SuperAdminAdmins() {
             )}
         </View>
 
-        <AppButton title="Crear admin" onPress={createAdmin} />
+        <AppButton title="Crear admin" variant="purple" onPress={createAdmin} />
       </AppCard>
 
       <View className="gap-4">

@@ -132,7 +132,7 @@ export default function AthleteLayout({
         showsVerticalScrollIndicator={false}
       >
         {title && (
-          <Text className="text-4xl font-bold text-gray-900 mb-5 ml-16">
+          <Text className="text-4xl font-bold text-gray-900 mb-8 text-center">
             {title}
           </Text>
         )}

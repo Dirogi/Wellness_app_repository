@@ -294,13 +294,13 @@ export default function AthleteDashboard() {
   const generalStatusValue = Number(summary.generalStatus) || 0;
 
   const generalStatusColor =
-    generalStatusValue >= 8
+    generalStatusValue > 8
       ? "text-blue-600"
-      : generalStatusValue >= 6
+      : generalStatusValue <= 8
       ? "text-emerald-600"
-      : generalStatusValue >= 4
+      : generalStatusValue <= 6
       ? "text-amber-600"
-      : generalStatusValue >= 0
+      : generalStatusValue <= 3
       ? "text-red-600"
       : "text-gray-500";
 

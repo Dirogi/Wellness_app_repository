@@ -16,13 +16,7 @@ type TabKey =
   | "discomfort"
   | "cycle";
 
-/*const tabs: { key: TabKey; label: string }[] = [
-  { key: "training", label: "Entrenamiento" },
-  { key: "sleep", label: "Sueño" },
-  { key: "heart", label: "Frecuencia Cardiaca" },
-  { key: "self", label: "Autopercepción" },
-  { key: "discomfort", label: "Molestias" },
-];*/
+
 const baseTabs: { key: TabKey; label: string }[] = [
   { key: "training", label: "Entrenamiento" },
   { key: "sleep", label: "Sueño" },
@@ -140,8 +134,20 @@ export default function DailyRegisterScreen() {
     return (diffMinutes / 60).toFixed(1);
   }, [bedHour, bedMinute, wakeHour, wakeMinute]);
 
-  const progress = completedTabs.length;
-  const progressPercent = `${progress}/6`;
+  const tabs = menstrualEnabled
+  ? [
+      ...baseTabs,
+      { key: "cycle" as TabKey, label: "Ciclo Menstrual" },
+    ]
+  : baseTabs;
+
+  const visibleCompletedTabs = completedTabs.filter((tab) =>
+    tabs.some((item) => item.key === tab)
+  );
+
+  
+  const progress = visibleCompletedTabs.length;
+  const progressPercent = `${progress}/${tabs.length}`;
 
   useEffect(() => {
     async function fetchBodyAreas() {
@@ -596,12 +602,6 @@ export default function DailyRegisterScreen() {
     console.log("Ciclo menstrual guardado correctamente");
   }
 
-  const tabs = menstrualEnabled
-  ? [
-      ...baseTabs,
-      { key: "cycle" as TabKey, label: "Ciclo Menstrual" },
-    ]
-  : baseTabs;
   
   return (
     <AthleteLayout title="Registro diario">

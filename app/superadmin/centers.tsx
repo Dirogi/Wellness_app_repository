@@ -172,7 +172,7 @@ export default function SuperAdminCenters() {
                 onPress={() => setSelectedCityId(city.id_ciudad)}
                 className={`rounded-2xl p-3 ${
                   selectedCityId === city.id_ciudad
-                    ? "bg-blue-100"
+                    ? "bg-purple-100"
                     : "bg-slate-100"
                 }`}
               >
@@ -196,6 +196,7 @@ export default function SuperAdminCenters() {
 
         <AppButton
           title="Crear centro"
+          variant="purple"
           onPress={createCenter}
         />
       </AppCard>

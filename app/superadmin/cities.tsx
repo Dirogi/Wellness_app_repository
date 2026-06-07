@@ -126,6 +126,7 @@ export default function SuperAdminCities() {
 
         <AppButton
           title="Crear ciudad"
+          variant="purple"
           onPress={createCity}
         />
       </AppCard>

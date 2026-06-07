@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Alert, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 import CoachLayout from "../../src/components/layout/CoachLayout";
 import AppButton from "../../src/components/ui/AppButton";
@@ -97,6 +97,67 @@ export default function CoachProfileScreen() {
     }));
   }
 
+  async function handleDeleteAccount() {
+    if (!idUsuario) return;
+
+    Alert.alert(
+      "Eliminar cuenta",
+      "Esta acción desactivará tu cuenta, eliminará tus asignaciones activas y cerrará la sesión. ¿Seguro que quieres continuar?",
+      [
+        {
+          text: "Cancelar",
+          style: "cancel",
+        },
+        {
+          text: "Eliminar",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const { error: asignacionesError } = await supabase.rpc(
+                "desactivar_asignaciones_trabajador",
+                {
+                  p_id_usuario: idUsuario,
+                }
+              );
+
+              if (asignacionesError) {
+                Alert.alert(
+                  "Error",
+                  "No se han podido desactivar las asignaciones."
+                );
+                return;
+              }
+
+              const { error } = await supabase
+                .from("usuarios")
+                .update({
+                  id_estado_cuenta: 3,
+                })
+                .eq("id_usuario", idUsuario);
+
+              if (error) {
+                Alert.alert(
+                  "Error",
+                  "No se ha podido eliminar la cuenta."
+                );
+                return;
+              }
+
+              await logout();
+            } catch (error) {
+              console.log(error);
+
+              Alert.alert(
+                "Error",
+                "Ha ocurrido un error inesperado."
+              );
+            }
+          },
+        },
+      ]
+    );
+  }
+
   return (
     <CoachLayout title="Mi perfil">
       <AppCard className="mb-6">
@@ -190,9 +251,9 @@ export default function CoachProfileScreen() {
           />
 
           <AppButton
-            title="Solicitar eliminación"
+            title="Eliminar cuenta"
             variant="danger"
-            onPress={() => console.log("Solicitar eliminación")}
+            onPress={handleDeleteAccount}
           />
         </View>
       </AppCard>
