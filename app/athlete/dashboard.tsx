@@ -6,9 +6,6 @@ import AppCard from "../../src/components/ui/AppCard";
 import MetricCard from "../../src/components/ui/MetricCard";
 import SectionTitle from "../../src/components/ui/SectionTitle";
 import { supabase } from "../../src/lib/supabase";
-import {
-  shortDate
-} from "../../src/utils/date";
 
 type TrainingItem = {
   tipo_entrenamiento: string | null;
@@ -50,6 +47,30 @@ export default function AthleteDashboard() {
   const [heartChartData, setHeartChartData] = useState<
     { value: number; label: string }[]
   >([]);
+
+  const today = new Date();
+
+  function formatDateToDB(date: Date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
+  }
+
+  function shortDate(date: string) {
+    const [, month, day] = date.split("-");
+    return `${day}/${month}`;
+  }
+
+  function getLast7Days() {
+    return Array.from({ length: 7 }, (_, index) => {
+      const date = new Date(today);
+      date.setDate(today.getDate() - (6 - index));
+
+      return formatDateToDB(date);
+    });
+  }
 
   useEffect(() => {
     loadDashboard();
@@ -107,8 +128,9 @@ export default function AthleteDashboard() {
         )
       `)
       .eq("id_deportista", athleteData.id_deportista)
-      .order("fecha", { ascending: false })
-      .limit(7);
+      .gte("fecha", getLast7Days()[0])
+      .lte("fecha", formatDateToDB(new Date()))
+      .order("fecha", { ascending: true });
 
     if (error) {
       console.log("Error cargando dashboard:", error.message);
@@ -116,7 +138,7 @@ export default function AthleteDashboard() {
     }
 
     const rows = registers || [];
-    const orderedRows = rows.slice().reverse();
+    const orderedRows = registers || [];
 
     const trainings = rows
       .map((r: any) => first(r.entrenamientos))
@@ -156,10 +178,15 @@ export default function AthleteDashboard() {
       : null;
 
     const moodValue = moodScore || 0;
+    const sleepScore =
+      Math.min(
+        Math.round(Number(latestSleep.horas_de_sueno)),
+        10
+      );
 
     const generalStatus =
       moodScore && latestSleep?.horas_de_sueno
-        ? Math.round((moodScore + Number(latestSleep.horas_de_sueno)) / 2)
+        ? Math.round((moodScore + sleepScore) / 2)
         : moodScore || null;
 
     setSummary({
@@ -223,35 +250,71 @@ export default function AthleteDashboard() {
 
     setRecentTrainings(trainings.slice(0, 3));
 
-    setSleepChartData(
-      orderedRows
-        .map((r: any) => {
-          const sleep = first(r.suenos);
+    const last7Days = getLast7Days();
 
-          if (!sleep?.horas_de_sueno) return null;
+    setSleepChartData(
+      trimLeadingEmptyDays(
+        last7Days.map((date) => {
+          const row = orderedRows.find((r: any) => r.fecha === date);
+          const sleep = first(row?.suenos);
 
           return {
-            value: Number(sleep.horas_de_sueno),
-            label: shortDate(r.fecha),
+            value: sleep?.horas_de_sueno
+              ? Number(sleep.horas_de_sueno)
+              : 0,
+            label: shortDate(date),
           };
         })
-        .filter(Boolean) as { value: number; label: string }[]
+      )
     );
 
     setHeartChartData(
-      orderedRows
-        .map((r: any) => {
-          const heart = first(r.frecuencias_cardiacas);
-
-          if (!heart?.hrv) return null;
+      trimLeadingEmptyDays(
+        last7Days.map((date) => {
+          const row = orderedRows.find((r: any) => r.fecha === date);
+          const heart = first(row?.frecuencias_cardiacas);
 
           return {
-            value: Number(heart.hrv),
-            label: shortDate(r.fecha),
+            value: heart?.hrv
+              ? Number(heart.hrv)
+              : 0,
+            label: shortDate(date),
           };
         })
-        .filter(Boolean) as { value: number; label: string }[]
+      )
     );
+
+    function getLast7Days() {
+      return Array.from({ length: 7 }, (_, index) => {
+        const date = new Date();
+        date.setDate(date.getDate() - (6 - index));
+
+        return formatDateToDB(date);
+      });
+    }
+
+    function formatDateToDB(date: Date) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+
+      return `${year}-${month}-${day}`;
+    }
+
+    function trimLeadingEmptyDays<T extends { value: number }>(data: T[]) {
+      let cutIndex = 0;
+
+      for (let i = 0; i < data.length - 1; i++) {
+        const currentEmpty = data[i].value === 0;
+        const nextEmpty = data[i + 1].value === 0;
+
+        if (currentEmpty && nextEmpty) {
+          cutIndex = i + 2;
+        }
+      }
+
+      return data.slice(cutIndex);
+    }
 
     setLoading(false);
   }
@@ -263,6 +326,7 @@ export default function AthleteDashboard() {
       </AthleteLayout>
     );
   }
+  
 
   function isRecentDate(date?: string) {
     if (!date) return false;
@@ -291,22 +355,22 @@ export default function AthleteDashboard() {
     message: string;
   }[];
 
-  const generalStatusValue = Number(summary.generalStatus) || 0;
+  const generalStatusValue = parseFloat(summary.generalStatus) || 0;
 
   const generalStatusColor =
-    generalStatusValue > 8
+    generalStatusValue >= 8
       ? "text-blue-600"
-      : generalStatusValue <= 8
+      : generalStatusValue >= 6
       ? "text-emerald-600"
-      : generalStatusValue <= 6
+      : generalStatusValue >= 4
       ? "text-amber-600"
-      : generalStatusValue <= 3
+      : generalStatusValue >= 1
       ? "text-red-600"
       : "text-gray-500";
 
   return (
     <AthleteLayout title="Dashboard">
-      <Text className="text-gray-500 mb-6">
+      <Text className="text-gray-500 mb-6 text-center">
         ¡Bienvenido/a, {summary.name}!
       </Text>
 
@@ -345,7 +409,7 @@ export default function AthleteDashboard() {
       <AppCard className="mb-6">
         <SectionTitle
           title="Estado general"
-          subtitle="Resumen calculado a partir de sueño, fatiga, HRV y estado de ánimo"
+          subtitle="Resumen calculado a partir del sueño y del estado de ánimo"
         />
 
         <View className="items-center justify-center py-4">
@@ -364,44 +428,35 @@ export default function AthleteDashboard() {
           subtitle="Últimos 7 días"
         />
 
-        <View className="bg-blue-50 rounded-2xl p-4">
+        <View className="bg-blue-50 rounded-2xl p-4 overflow-hidden">
           {heartChartData.length > 0 ? (
             <LineChart
               data={heartChartData}
               height={150}
-              curved
-              areaChart
+              hideDataPoints={false}
+              dataPointsColor="#2563EB"
+              dataPointsRadius={4}
+              thickness={2}
+              color="#2563EB"
               initialSpacing={12}
               endSpacing={12}
-              startFillColor="#3B82F6"
-              endFillColor="#DBEAFE"
-              startOpacity={0.4}
-              endOpacity={0.05}
-              color="#2563EB"
-              thickness={3}
-              dataPointsColor="#2563EB"
-
-              xAxisColor="#CBD5E1"
-              yAxisColor="#CBD5E1"
-
-              yAxisThickness={1}
-              xAxisThickness={1}
-
-              rulesColor="#E5E7EB"
-              rulesType="solid"
-
+              maxValue={100}
+              noOfSections={5}
+              yAxisLabelSuffix=" ms"
               yAxisTextStyle={{
                 color: "#6B7280",
                 fontSize: 10,
               }}
-
               xAxisLabelTextStyle={{
                 color: "#6B7280",
                 fontSize: 9,
               }}
-
-              noOfSections={5}
-              maxValue={100}
+              xAxisColor="#CBD5E1"
+              yAxisColor="#CBD5E1"
+              rulesColor="#E5E7EB"
+              rulesType="solid"
+              yAxisThickness={1}
+              xAxisThickness={1}
             />
           ) : (
             <Text className="text-blue-600 font-semibold text-center">
@@ -414,7 +469,7 @@ export default function AthleteDashboard() {
       <AppCard className="mb-6">
         <SectionTitle title="Tendencia de sueño" subtitle="Últimos 7 días" />
 
-        <View className="bg-teal-50 rounded-2xl p-4">
+        <View className="bg-teal-50 rounded-2xl p-4 overflow-hidden">
           {sleepChartData.length > 0 ? (
             <BarChart
               data={sleepChartData}
@@ -427,7 +482,7 @@ export default function AthleteDashboard() {
               frontColor="#14B8A6"
               maxValue={10}
               noOfSections={5}
-              yAxisLabelSuffix="h"
+              yAxisLabelSuffix=" h"
               yAxisTextStyle={{ color: "#6B7280", fontSize: 10 }}
               xAxisLabelTextStyle={{ color: "#6B7280", fontSize: 9 }}
               xAxisColor="#CBD5E1"

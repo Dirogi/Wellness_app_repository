@@ -17,6 +17,55 @@ export default function HeartRateScreen() {
   const [loading, setLoading] = useState(true);
   const [heartData, setHeartData] = useState<HeartItem[]>([]);
 
+  const today = new Date();
+
+  function formatDate(date: Date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
+  }
+
+  function getStartDate() {
+    const date = new Date(today);
+    date.setDate(today.getDate() - 7);
+    return date;
+  }
+
+  function fillWeeklyHeartData(data: HeartItem[]) {
+    const days = Array.from({ length: 8 }, (_, index) => {
+      const date = new Date(getStartDate());
+      date.setDate(getStartDate().getDate() + index);
+
+      const dateString = formatDate(date);
+
+      const existing = data.find((item) => item.fecha === dateString);
+
+      return {
+        fecha: dateString,
+        hrv: existing?.hrv ?? null,
+        fc_reposo: existing?.fc_reposo ?? null,
+      };
+    });
+
+    let cutIndex = 0;
+
+    for (let i = 0; i < days.length - 1; i++) {
+      const currentEmpty =
+        days[i].hrv === null && days[i].fc_reposo === null;
+
+      const nextEmpty =
+        days[i + 1].hrv === null && days[i + 1].fc_reposo === null;
+
+      if (currentEmpty && nextEmpty) {
+        cutIndex = i + 2;
+      }
+    }
+
+    return days.slice(cutIndex);
+  }
+
   useEffect(() => {
     loadHeartData();
   }, []);
@@ -45,8 +94,9 @@ export default function HeartRateScreen() {
         )
       `)
       .eq("id_deportista", athleteData.id_deportista)
-      .order("fecha", { ascending: false })
-      .limit(7);
+      .gte("fecha", formatDate(getStartDate()))
+      .lte("fecha", formatDate(today))
+      .order("fecha", { ascending: true });
 
     if (error) {
       console.log("Error cargando frecuencia cardiaca:", error.message);
@@ -67,7 +117,7 @@ export default function HeartRateScreen() {
         })
         .filter(Boolean) || [];
 
-    setHeartData(formattedData as HeartItem[]);
+    setHeartData(fillWeeklyHeartData(formattedData as HeartItem[]));
     setLoading(false);
   }
 
@@ -79,8 +129,12 @@ export default function HeartRateScreen() {
     );
   }
 
-  const latest = heartData[0];
-  const chartData = heartData.slice().reverse();
+  const latest = heartData
+    .slice()
+    .reverse()
+    .find((item) => item.hrv !== null || item.fc_reposo !== null);
+
+  const chartData = heartData;
 
   return (
     <AthleteLayout title="Frecuencia cardiaca">
@@ -107,14 +161,13 @@ export default function HeartRateScreen() {
         />
 
         {chartData.length > 0 ? (
-          <View className="bg-blue-50 rounded-2xl p-4">
+          <View className="bg-blue-50 rounded-2xl p-4 overflow-hidden">
             <LineChart
               data={chartData.map((item) => ({
                 value: item.hrv || 0,
                 label: shortDate(item.fecha),
               }))}
               height={170}
-              curved
               areaChart
               initialSpacing={12}
               endSpacing={12}
@@ -127,6 +180,7 @@ export default function HeartRateScreen() {
               dataPointsColor="#2563EB"
               xAxisColor="#CBD5E1"
               yAxisColor="#CBD5E1"
+              yAxisLabelSuffix=" ms"
               yAxisThickness={1}
               xAxisThickness={1}
               rulesColor="#E5E7EB"
@@ -159,14 +213,13 @@ export default function HeartRateScreen() {
         />
 
         {chartData.length > 0 ? (
-          <View className="bg-red-50 rounded-2xl p-4">
+          <View className="bg-red-50 rounded-2xl p-4 overflow-hidden">
             <LineChart
               data={chartData.map((item) => ({
                 value: item.fc_reposo || 0,
                 label: shortDate(item.fecha),
               }))}
               height={170}
-              curved
               areaChart
               initialSpacing={12}
               endSpacing={12}
@@ -179,13 +232,14 @@ export default function HeartRateScreen() {
               dataPointsColor="#DC2626"
               xAxisColor="#CBD5E1"
               yAxisColor="#CBD5E1"
+              yAxisLabelSuffix=" bpm"
               yAxisThickness={1}
               xAxisThickness={1}
               rulesColor="#E5E7EB"
               rulesType="solid"
               yAxisTextStyle={{
                 color: "#6B7280",
-                fontSize: 10,
+                fontSize: 8,
               }}
               xAxisLabelTextStyle={{
                 color: "#6B7280",

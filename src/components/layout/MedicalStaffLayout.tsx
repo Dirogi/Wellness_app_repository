@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { ReactNode, useState } from "react";
@@ -8,11 +9,17 @@ type MedicalStaffLayoutProps = {
   title?: string;
 };
 
-const medicalStaffMenuItems = [
-  { label: "Dashboard", icon: "🩺", route: "/medical-staff/dashboard" },
-  { label: "Deportistas", icon: "👥", route: "/medical-staff/athletes" },
-  { label: "Deportistas Asignados", icon: "🏃", route: "/medical-staff/assigned-athletes" },
-  { label: "Perfil", icon: "👤", route: "/medical-staff/profile" },
+type MedicalMenuItem = {
+  label: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  route: string;
+};
+
+const medicalMenuItems: MedicalMenuItem[] = [
+  { label: "Dashboard", icon: "home-outline", route: "/medical-staff/dashboard" },
+  { label: "Deportistas", icon: "people-outline", route: "/medical-staff/athletes" },
+  { label: "Deportistas Asignados", icon: "person-add-outline", route: "/medical-staff/assigned-athletes" },
+  { label: "Perfil", icon: "person-outline", route: "/medical-staff/profile" },
 ];
 
 export default function MedicalStaffLayout({
@@ -28,7 +35,7 @@ export default function MedicalStaffLayout({
         onPress={() => setIsSidebarOpen(!isSidebarOpen)}
         className="absolute top-12 left-5 z-50 w-24 h-16 rounded-3xl bg-white items-center justify-center shadow border border-gray-100"
       >
-        <Text className="text-3xl">☰</Text>
+        <Ionicons name="menu" size={32} color="#374151" />
       </Pressable>
 
       {isSidebarOpen && (
@@ -44,10 +51,10 @@ export default function MedicalStaffLayout({
             onPress={() => setIsSidebarOpen(false)}
             className="w-16 h-14 rounded-2xl bg-slate-100 items-center justify-center mb-4"
           >
-            <Text className="text-3xl">☰</Text>
+            <Ionicons name="close" size={30} color="#374151" />
           </Pressable>
 
-          {medicalStaffMenuItems.map((item) => (
+          {medicalMenuItems.map((item) => (
             <Pressable
               key={item.route}
               onPress={() => {
@@ -56,7 +63,11 @@ export default function MedicalStaffLayout({
               }}
               className="items-center justify-center py-3 px-2 rounded-2xl mb-2 active:bg-blue-100 w-20"
             >
-              <Text className="text-3xl mb-1">{item.icon}</Text>
+              <Ionicons
+                name={item.icon}
+                size={28}
+                color="#374151"
+              />
               <Text className="text-[10px] text-center text-gray-700 font-medium">
                 {item.label}
               </Text>

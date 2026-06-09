@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { ReactNode, useState } from "react";
@@ -8,11 +9,17 @@ type CoachLayoutProps = {
   title?: string;
 };
 
-const coachMenuItems = [
-  { label: "Dashboard", icon: "📊", route: "/coach/dashboard" },
-  { label: "Deportistas", icon: "👥", route: "/coach/athletes" },
-  { label: "Deportistas Asignados", icon: "🏃", route: "/coach/assigned-athletes" },
-  { label: "Perfil", icon: "👤", route: "/coach/profile" },
+type CoachMenuItem = {
+  label: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  route: string;
+};
+
+const coachMenuItems: CoachMenuItem[] = [
+  { label: "Dashboard", icon: "home-outline", route: "/coach/dashboard" },
+  { label: "Deportistas", icon: "people-outline", route: "/coach/athletes" },
+  { label: "Deportistas Asignados", icon: "person-add-outline", route: "/coach/assigned-athletes" },
+  { label: "Perfil", icon: "person-outline", route: "/coach/profile" },
 ];
 
 export default function CoachLayout({ children, title }: CoachLayoutProps) {
@@ -25,7 +32,7 @@ export default function CoachLayout({ children, title }: CoachLayoutProps) {
         onPress={() => setIsSidebarOpen(!isSidebarOpen)}
         className="absolute top-12 left-5 z-50 w-24 h-16 rounded-3xl bg-white items-center justify-center shadow border border-gray-100"
       >
-        <Text className="text-3xl">☰</Text>
+        <Ionicons name="menu" size={32} color="#374151" />
       </Pressable>
 
       {isSidebarOpen && (
@@ -41,7 +48,7 @@ export default function CoachLayout({ children, title }: CoachLayoutProps) {
             onPress={() => setIsSidebarOpen(false)}
             className="w-16 h-14 rounded-2xl bg-slate-100 items-center justify-center mb-4"
           >
-            <Text className="text-3xl">☰</Text>
+            <Ionicons name="close" size={30} color="#374151" />
           </Pressable>
 
           {coachMenuItems.map((item) => (
@@ -53,7 +60,11 @@ export default function CoachLayout({ children, title }: CoachLayoutProps) {
               }}
               className="items-center justify-center py-3 px-2 rounded-2xl mb-2 active:bg-blue-100 w-20"
             >
-              <Text className="text-3xl mb-1">{item.icon}</Text>
+              <Ionicons
+                name={item.icon}
+                size={28}
+                color="#374151"
+              />
               <Text className="text-[10px] text-center text-gray-700 font-medium">
                 {item.label}
               </Text>

@@ -21,6 +21,25 @@ export default function MenstrualCycleScreen() {
   const [loading, setLoading] = useState(true);
   const [cycleData, setCycleData] = useState<CycleItem[]>([]);
 
+  const today = new Date();
+
+  function formatDateToDB(date: Date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
+  }
+
+  function isCurrentMonth(dateString: string) {
+    const [year, month] = dateString.split("-").map(Number);
+
+    return (
+      year === today.getFullYear() &&
+      month === today.getMonth() + 1
+    );
+  }
+
   useEffect(() => {
     loadCycleData();
   }, []);
@@ -57,8 +76,14 @@ export default function MenstrualCycleScreen() {
         )
       `)
       .eq("id_deportista", athleteData.id_deportista)
-      .order("fecha", { ascending: false })
-      .limit(30);
+      .gte(
+        "fecha",
+        formatDateToDB(
+          new Date(today.getFullYear(), today.getMonth(), 1)
+        )
+      )
+      .lte("fecha", formatDateToDB(today))
+      .order("fecha", { ascending: false });
 
     if (error) {
       console.log("Error cargando ciclo menstrual:", error.message);
@@ -117,7 +142,11 @@ export default function MenstrualCycleScreen() {
     : 0;
 
   const activePeriodData = cycleData
-    .filter((item) => item.menstruacion_activa)
+    .filter(
+      (item) =>
+        item.menstruacion_activa &&
+        isCurrentMonth(item.fecha)
+    )
     .slice()
     .reverse();
 
@@ -266,39 +295,6 @@ function BloodDropIndicator({ value }: { value: number }) {
           )}
         </View>
       ))}
-    </View>
-  );
-}
-
-function SimpleBarChart({
-  data,
-  maxValue,
-}: {
-  data: { label: string; value: number }[];
-  maxValue: number;
-}) {
-  if (data.length === 0) {
-    return (
-      <View className="h-44 bg-slate-50 rounded-2xl p-4 items-center justify-center">
-        <Text className="text-gray-500">Sin datos suficientes</Text>
-      </View>
-    );
-  }
-
-  return (
-    <View className="h-44 bg-slate-50 rounded-2xl p-4 flex-row items-end justify-between">
-      {data.map((item, index) => {
-        const height = (item.value / maxValue) * 120;
-
-        return (
-          <View key={`${item.label}-${index}`} className="items-center flex-1">
-            <View className="w-8 bg-red-400 rounded-t-xl" style={{ height }} />
-            <Text className="text-[10px] text-gray-400 mt-2">
-              {item.label}
-            </Text>
-          </View>
-        );
-      })}
     </View>
   );
 }

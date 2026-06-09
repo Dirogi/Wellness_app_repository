@@ -6,10 +6,7 @@ import AppCard from "../../src/components/ui/AppCard";
 import MetricCard from "../../src/components/ui/MetricCard";
 import SectionTitle from "../../src/components/ui/SectionTitle";
 import { supabase } from "../../src/lib/supabase";
-import {
-  currentMonthName,
-  dayOnly
-} from "../../src/utils/date";
+import { currentMonthName, dayOnly } from "../../src/utils/date";
 
 type SleepItem = {
   fecha: string;
@@ -23,6 +20,57 @@ type SleepItem = {
 export default function SleepScreen() {
   const [loading, setLoading] = useState(true);
   const [sleepData, setSleepData] = useState<SleepItem[]>([]);
+
+  const today = new Date();
+
+  const startOfMonth = new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    1
+  );
+
+  function formatDate(date: Date) {
+    const year = date.getFullYear();
+
+    const month = String(
+      date.getMonth() + 1
+    ).padStart(2, "0");
+
+    const day = String(
+      date.getDate()
+    ).padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
+  }
+
+  function fillMonthSleepData(data: SleepItem[]) {
+    const daysInRange = today.getDate();
+
+    return Array.from({ length: daysInRange }, (_, index) => {
+      const day = index + 1;
+
+      const date = new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        day
+      );
+
+      const dateString = formatDate(date);
+
+      const existing = data.find(
+        (item) => item.fecha === dateString
+      );
+
+      return {
+        fecha: dateString,
+        horas_de_sueno: existing?.horas_de_sueno ?? 0,
+        calidad_sueno: existing?.calidad_sueno ?? 0,
+        hora_acostarse: existing?.hora_acostarse ?? null,
+        hora_levantarse: existing?.hora_levantarse ?? null,
+        numero_despertares: existing?.numero_despertares ?? null,
+      };
+    });
+  }
 
   useEffect(() => {
     loadSleepData();
@@ -56,7 +104,9 @@ export default function SleepScreen() {
       `)
       .eq("id_deportista", athleteData.id_deportista)
       .order("fecha", { ascending: false })
-      .limit(30);
+      .gte("fecha", formatDate(startOfMonth))
+      .lte("fecha", formatDate(today))
+      .order("fecha", { ascending: false })
 
     if (error) {
       console.log("Error cargando sueño:", error.message);
@@ -95,7 +145,7 @@ export default function SleepScreen() {
   const latest = sleepData[0];
 
   const weeklyData = sleepData.slice(0, 7);
-  const monthlyData = sleepData.slice(0, 30);
+  const monthlyData = fillMonthSleepData(sleepData);
 
   const weeklyAvgHours = average(
     weeklyData.map((item) => item.horas_de_sueno || 0)
@@ -175,11 +225,9 @@ export default function SleepScreen() {
         />
 
         {monthlyData.length > 0 ? (
-          <View className="bg-teal-50 rounded-2xl p-4">
+          <View className="bg-teal-50 rounded-2xl p-4 overflow-hidden">
             <BarChart
               data={monthlyData
-                .slice()
-                .reverse()
                 .map((item) => ({
                   value: item.horas_de_sueno || 0,
                   label: dayOnly(item.fecha),
@@ -224,11 +272,9 @@ export default function SleepScreen() {
         />
 
         {monthlyData.length > 0 ? (
-          <View className="bg-purple-50 rounded-2xl p-4">
+          <View className="bg-purple-50 rounded-2xl p-4 overflow-hidden">
             <LineChart
               data={monthlyData
-                .slice()
-                .reverse()
                 .map((item) => ({
                   value: item.calidad_sueno || 0,
                   label: dayOnly(item.fecha),
@@ -299,80 +345,6 @@ export default function SleepScreen() {
         </AppCard>
       </View>
     </AthleteLayout>
-  );
-}
-
-function SimpleBarChart({
-  data,
-  maxValue,
-}: {
-  data: { label: string; value: number }[];
-  maxValue: number;
-}) {
-  if (data.length === 0) {
-    return (
-      <View className="h-44 bg-slate-50 rounded-2xl p-4 items-center justify-center">
-        <Text className="text-gray-500">Sin datos suficientes</Text>
-      </View>
-    );
-  }
-
-  return (
-    <View className="h-44 bg-slate-50 rounded-2xl p-4 flex-row items-end justify-between">
-      {data.map((item, index) => {
-        const height = (item.value / maxValue) * 120;
-
-        return (
-          <View key={`${item.label}-${index}`} className="items-center flex-1">
-            <View className="w-2 bg-blue-500 rounded-t-xl" style={{ height }} />
-            {index % 5 === 0 && (
-              <Text className="text-[10px] text-gray-400 mt-2">
-                {item.label}
-              </Text>
-            )}
-          </View>
-        );
-      })}
-    </View>
-  );
-}
-
-function SimpleLineChart({
-  data,
-  maxValue,
-}: {
-  data: { label: string; value: number }[];
-  maxValue: number;
-}) {
-  if (data.length === 0) {
-    return (
-      <View className="h-44 bg-slate-50 rounded-2xl p-4 items-center justify-center">
-        <Text className="text-gray-500">Sin datos suficientes</Text>
-      </View>
-    );
-  }
-
-  return (
-    <View className="h-44 bg-slate-50 rounded-2xl p-4 justify-end">
-      <View className="flex-row items-end justify-between h-32">
-        {data.map((item, index) => {
-          const height = (item.value / maxValue) * 120;
-
-          return (
-            <View key={`${item.label}-${index}`} className="items-center flex-1">
-              <View
-                className="w-2 h-2 bg-teal-500 rounded-full"
-                style={{ marginBottom: height }}
-              />
-            </View>
-          );
-        })}
-      </View>
-
-      <Text className="text-xs text-gray-400 text-center mt-2">
-        Calidad diaria del sueño
-      </Text>
-    </View>
   );
 }
 

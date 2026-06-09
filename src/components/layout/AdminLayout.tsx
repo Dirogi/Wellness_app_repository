@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { ReactNode, useState } from "react";
@@ -8,18 +9,18 @@ type AdminLayoutProps = {
   title?: string;
 };
 
-type MenuItem = {
+type AdminMenuItem = {
   label: string;
-  icon: string;
+  icon: keyof typeof Ionicons.glyphMap;
   route: string;
 };
 
-const menuItems: MenuItem[] = [
-  { label: "Dashboard", icon: "🏠", route: "/admin/dashboard" },
-  { label: "Usuarios", icon: "👥", route: "/admin/users" },
-  { label: "Solicitudes", icon: "📩", route: "/admin/requests" },
-  { label: "Nuevo trabajador", icon: "➕", route: "/admin/pre-register-worker" },
-  { label: "Perfil", icon: "👤", route: "/admin/profile" },
+const adminMenuItems: AdminMenuItem[] = [
+  { label: "Dashboard", icon: "home-outline", route: "/admin/dashboard" },
+  { label: "Usuarios", icon: "people-outline", route: "/admin/users" },
+  { label: "Solicitudes", icon: "mail-outline", route: "/admin/requests" },
+  { label: "Nuevo trabajador", icon: "person-add-outline", route: "/admin/pre-register-worker" },
+  { label: "Perfil", icon: "person-outline", route: "/admin/profile" },
 ];
 
 export default function AdminLayout({
@@ -36,7 +37,11 @@ export default function AdminLayout({
         onPress={() => setIsSidebarOpen(!isSidebarOpen)}
         className="absolute top-12 left-5 z-50 w-24 h-16 rounded-3xl bg-white items-center justify-center shadow border border-gray-100"
       >
-        <Text className="text-3xl">☰</Text>
+        <Ionicons
+          name="menu"
+          size={32}
+          color="#374151"
+        />
       </Pressable>
 
       {isSidebarOpen && (
@@ -52,10 +57,14 @@ export default function AdminLayout({
             onPress={() => setIsSidebarOpen(false)}
             className="w-16 h-14 rounded-2xl bg-slate-100 items-center justify-center mb-4"
           >
-            <Text className="text-3xl">☰</Text>
+            <Ionicons
+              name="close"
+              size={30}
+              color="#374151"
+            />
           </Pressable>
 
-          {menuItems.map((item) => (
+          {adminMenuItems.map((item) => (
             <Pressable
               key={item.route}
               onPress={() => {
@@ -64,7 +73,11 @@ export default function AdminLayout({
               }}
               className="items-center justify-center py-3 px-2 rounded-2xl mb-2 active:bg-blue-100 w-20"
             >
-              <Text className="text-3xl mb-1">{item.icon}</Text>
+              <Ionicons
+                name={item.icon}
+                size={28}
+                color="#374151"
+              />
 
               <Text className="text-[11px] text-center text-gray-700 font-medium">
                 {item.label}

@@ -6,9 +6,7 @@ import AppCard from "../../src/components/ui/AppCard";
 import MetricCard from "../../src/components/ui/MetricCard";
 import SectionTitle from "../../src/components/ui/SectionTitle";
 import { supabase } from "../../src/lib/supabase";
-import {
-  shortDate
-} from "../../src/utils/date";
+import { shortDate } from "../../src/utils/date";
 
 type TrainingTab = "history" | "trends" | "monthly";
 
@@ -31,6 +29,67 @@ export default function TrainingScreen() {
   const [activeTab, setActiveTab] = useState<TrainingTab>("history");
   const [loading, setLoading] = useState(true);
   const [trainingData, setTrainingData] = useState<TrainingItem[]>([]);
+
+  const today = new Date();
+
+  function formatDateToDB(date: Date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
+  }
+
+  function getStartDate() {
+    const date = new Date(today);
+    date.setDate(today.getDate() - 7);
+    return date;
+  }
+
+  function fillWeeklyTrainingData(data: TrainingItem[]) {
+    const days = Array.from({ length: 8 }, (_, index) => {
+      const date = new Date(getStartDate());
+      date.setDate(getStartDate().getDate() + index);
+
+      const dateString = formatDateToDB(date);
+
+      const existing = data.find((item) => item.fecha === dateString);
+
+      return {
+        fecha: dateString,
+        duracion: existing?.duracion ?? null,
+        intensidad_percibida: existing?.intensidad_percibida ?? null,
+        carga_de_entrenamiento: existing?.carga_de_entrenamiento ?? null,
+        tipo_entrenamiento: existing?.tipo_entrenamiento ?? null,
+        notas_entrenamiento: existing?.notas_entrenamiento ?? null,
+      };
+    });
+
+    let cutIndex = 0;
+
+    for (let i = 0; i < days.length - 2; i++) {
+      const firstEmpty =
+        days[i].duracion === null &&
+        days[i].intensidad_percibida === null &&
+        days[i].carga_de_entrenamiento === null;
+
+      const secondEmpty =
+        days[i + 1].duracion === null &&
+        days[i + 1].intensidad_percibida === null &&
+        days[i + 1].carga_de_entrenamiento === null;
+
+      const thirdEmpty =
+        days[i + 2].duracion === null &&
+        days[i + 2].intensidad_percibida === null &&
+        days[i + 2].carga_de_entrenamiento === null;
+
+      if (firstEmpty && secondEmpty && thirdEmpty) {
+        cutIndex = i + 3;
+      }
+    }
+
+    return days.slice(cutIndex);
+  }
 
   useEffect(() => {
     loadTrainingData();
@@ -92,8 +151,16 @@ export default function TrainingScreen() {
     setLoading(false);
   }
 
-  const weeklyData = trainingData.slice(0, 7);
-  const monthlyData = trainingData.slice(0, 30);
+  const weeklyData = fillWeeklyTrainingData(trainingData);
+  const monthlyData = trainingData.filter((item) => {
+    const itemDate = new Date(item.fecha);
+    const today = new Date();
+
+    return (
+      itemDate.getFullYear() === today.getFullYear() &&
+      itemDate.getMonth() === today.getMonth()
+    );
+  });
 
   const totalSessions = weeklyData.length;
   const totalMinutes = weeklyData.reduce(
@@ -134,9 +201,58 @@ export default function TrainingScreen() {
     return Object.entries(result);
   }, [monthlyData]);
 
-  const weeklyLoad = useMemo(() => {
-    return groupLoadByWeek(monthlyData);
-  }, [monthlyData]);
+  const currentMonthTrainingData = trainingData.filter((item) => {
+    const itemDate = new Date(item.fecha);
+    const today = new Date();
+
+    return (
+      itemDate.getFullYear() === today.getFullYear() &&
+      itemDate.getMonth() === today.getMonth()
+    );
+  });
+
+  const weeklyLoad = [
+    { label: "S1", value: 0 },
+    { label: "S2", value: 0 },
+    { label: "S3", value: 0 },
+    { label: "S4", value: 0 },
+  ];
+
+  currentMonthTrainingData.forEach((item) => {
+    const day = Number(item.fecha.split("-")[2]);
+
+    let weekIndex = 0;
+
+    if (day <= 7) {
+      weekIndex = 0;
+    } else if (day <= 14) {
+      weekIndex = 1;
+    } else if (day <= 21) {
+      weekIndex = 2;
+    } else {
+      weekIndex = 3;
+    }
+
+    weeklyLoad[weekIndex].value += item.carga_de_entrenamiento || 0;
+  });
+
+  const weeklyLoadMaxValue = Math.max(
+    ...weeklyLoad.map((item) => item.value)
+  );
+
+  const weeklyLoadChartMaxValue =
+    weeklyLoadMaxValue > 0 ? weeklyLoadMaxValue + 200 : 1000;
+
+  const dailyLoadMaxValue = Math.max(
+    ...weeklyData.map(
+      (item) => item.carga_de_entrenamiento || 0
+    )
+  );
+
+  const dailyLoadChartMaxValue =
+    dailyLoadMaxValue > 0
+      ? dailyLoadMaxValue + 100
+      : 1000;
 
   const monthlyTotalLoad = monthlyData.reduce(
     (sum, item) => sum + (item.carga_de_entrenamiento || 0),
@@ -195,7 +311,7 @@ export default function TrainingScreen() {
 
           <View className="gap-3">
             {trainingData.length > 0 ? (
-              trainingData.map((item, index) => (
+              trainingData.slice(0, 10).map((item, index) => (
                 <View
                   key={`${item.fecha}-${index}`}
                   className="bg-slate-50 rounded-2xl p-4 flex-row justify-between items-center"
@@ -233,11 +349,9 @@ export default function TrainingScreen() {
           <AppCard>
             <SectionTitle title="Evolución de carga" subtitle="Carga diaria" />
             {weeklyData.length > 0 ? (
-              <View className="bg-blue-50 rounded-2xl p-4">
+              <View className="bg-blue-50 rounded-2xl p-4 overflow-hidden">
                 <BarChart
                   data={weeklyData
-                    .slice()
-                    .reverse()
                     .map((item) => ({
                       value: item.carga_de_entrenamiento || 0,
                       label: shortDate(item.fecha),
@@ -249,12 +363,12 @@ export default function TrainingScreen() {
                   endSpacing={12}
                   roundedTop
                   frontColor="#2563EB"
-                  maxValue={1000}
+                  maxValue={dailyLoadChartMaxValue}
                   noOfSections={5}
                   yAxisLabelSuffix=" AU"
                   yAxisTextStyle={{
                     color: "#6B7280",
-                    fontSize: 10,
+                    fontSize: 8,
                   }}
                   xAxisLabelTextStyle={{
                     color: "#6B7280",
@@ -277,11 +391,9 @@ export default function TrainingScreen() {
 
           <AppCard>
             <SectionTitle title="Duración" subtitle="Minutos por sesión" />
-            <View className="bg-emerald-50 rounded-2xl p-4">
+            <View className="bg-emerald-50 rounded-2xl p-4 overflow-hidden">
               <LineChart
                 data={weeklyData
-                  .slice()
-                  .reverse()
                   .map((item) => ({
                     value: item.duracion || 0,
                     label: shortDate(item.fecha),
@@ -289,38 +401,30 @@ export default function TrainingScreen() {
                 height={170}
                 curved
                 areaChart
-
                 initialSpacing={12}
                 endSpacing={12}
-
                 startFillColor="#10B981"
                 endFillColor="#D1FAE5"
                 startOpacity={0.4}
                 endOpacity={0.05}
-
                 color="#059669"
                 thickness={3}
                 dataPointsColor="#059669"
-
                 xAxisColor="#CBD5E1"
                 yAxisColor="#CBD5E1"
-
+                yAxisLabelSuffix=" min"
                 yAxisThickness={1}
                 xAxisThickness={1}
-
                 rulesColor="#E5E7EB"
                 rulesType="solid"
-
                 yAxisTextStyle={{
                   color: "#6B7280",
-                  fontSize: 10,
+                  fontSize: 8,
                 }}
-
                 xAxisLabelTextStyle={{
                   color: "#6B7280",
                   fontSize: 9,
                 }}
-
                 noOfSections={5}
                 maxValue={180}
               />
@@ -329,11 +433,9 @@ export default function TrainingScreen() {
 
           <AppCard>
             <SectionTitle title="Intensidad" subtitle="RPE por sesión" />
-            <View className="bg-amber-50 rounded-2xl p-4">
+            <View className="bg-amber-50 rounded-2xl p-4 overflow-hidden">
               <LineChart
                 data={weeklyData
-                  .slice()
-                  .reverse()
                   .map((item) => ({
                     value: item.intensidad_percibida || 0,
                     label: shortDate(item.fecha),
@@ -379,7 +481,7 @@ export default function TrainingScreen() {
               subtitle="Carga de entrenamiento por semana"
             />
             {weeklyLoad.some((item) => item.value > 0) ? (
-              <View className="bg-blue-50 rounded-2xl p-4">
+              <View className="bg-blue-50 rounded-2xl p-4 overflow-hidden">
                 <BarChart
                   data={weeklyLoad.map((item) => ({
                     value: item.value,
@@ -391,12 +493,12 @@ export default function TrainingScreen() {
                   initialSpacing={20}
                   endSpacing={20}
                   frontColor="#2563EB"
-                  maxValue={3000}
+                  maxValue={weeklyLoadChartMaxValue}
                   noOfSections={5}
                   yAxisLabelSuffix=" AU"
                   yAxisTextStyle={{
                     color: "#6B7280",
-                    fontSize: 10,
+                    fontSize: 7,
                   }}
                   xAxisLabelTextStyle={{
                     color: "#6B7280",
@@ -513,39 +615,6 @@ function TabButton({
   );
 }
 
-function SimpleBarChart({
-  data,
-}: {
-  data: { label: string; value: number }[];
-}) {
-  if (data.length === 0) {
-    return (
-      <View className="h-44 bg-slate-50 rounded-2xl p-4 items-center justify-center">
-        <Text className="text-gray-500">Sin datos suficientes</Text>
-      </View>
-    );
-  }
-
-  const maxValue = Math.max(...data.map((item) => item.value), 1);
-
-  return (
-    <View className="h-44 bg-slate-50 rounded-2xl p-4 flex-row items-end justify-between">
-      {data.map((item, index) => {
-        const height = (item.value / maxValue) * 110;
-
-        return (
-          <View key={`${item.label}-${index}`} className="items-center flex-1">
-            <View
-              className="w-7 bg-blue-500 rounded-t-xl"
-              style={{ height }}
-            />
-            <Text className="text-xs text-gray-500 mt-2">{item.label}</Text>
-          </View>
-        );
-      })}
-    </View>
-  );
-}
 
 function StatRow({ label, value }: { label: string; value: string }) {
   return (

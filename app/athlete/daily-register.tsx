@@ -616,7 +616,9 @@ export default function DailyRegisterScreen() {
         <View className="h-3 bg-gray-200 rounded-full overflow-hidden">
           <View
             className="h-3 bg-blue-600 rounded-full"
-            style={{ width: `${(progress / 6) * 100}%` }}
+            style={{
+              width: `${(progress / tabs.length) * 100}%`,
+            }}
           />
         </View>
       </AppCard>
@@ -939,7 +941,7 @@ export default function DailyRegisterScreen() {
                 label="Preparación para entrenar"
                 value={readinessToTrain}
                 max={5}
-                icon="🏋️"
+                icon="🔥"
                 onChange={setReadinessToTrain}
               />
 

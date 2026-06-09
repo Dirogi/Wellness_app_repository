@@ -1,17 +1,12 @@
 import { useEffect, useState } from "react";
 import { Text, View } from "react-native";
-import {
-  BarChart,
-  LineChart
-} from "react-native-gifted-charts";
+import { BarChart, LineChart } from "react-native-gifted-charts";
 import AthleteLayout from "../../src/components/layout/AthleteLayout";
 import AppCard from "../../src/components/ui/AppCard";
 import MetricCard from "../../src/components/ui/MetricCard";
 import SectionTitle from "../../src/components/ui/SectionTitle";
 import { supabase } from "../../src/lib/supabase";
-import {
-  dayOnly
-} from "../../src/utils/date";
+import { dayOnly } from "../../src/utils/date";
 
 type SelfItem = {
   fecha: string;
@@ -33,6 +28,68 @@ export default function SelfPerceptionScreen() {
   useEffect(() => {
     loadSelfData();
   }, []);
+
+  const today = new Date();
+
+  function formatDate(date: Date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
+  }
+
+  function getStartDate() {
+    const date = new Date(today);
+    date.setDate(today.getDate() - 7);
+    return date;
+  }
+
+  function fillWeeklySelfData(data: SelfItem[]) {
+    const days = Array.from({ length: 8 }, (_, index) => {
+      const date = new Date(getStartDate());
+      date.setDate(getStartDate().getDate() + index);
+
+      const dateString = formatDate(date);
+
+      const existing = data.find((item) => item.fecha === dateString);
+
+      return {
+        fecha: dateString,
+        motivacion: existing?.motivacion ?? null,
+        estres: existing?.estres ?? null,
+        irritabilidad: existing?.irritabilidad ?? null,
+        fatiga_fisica: existing?.fatiga_fisica ?? null,
+        fatiga_mental: existing?.fatiga_mental ?? null,
+        fatiga_general: existing?.fatiga_general ?? null,
+        sensacion_recuperacion: existing?.sensacion_recuperacion ?? null,
+        preparacion_entrenar: existing?.preparacion_entrenar ?? null,
+        nivel_energia: existing?.nivel_energia ?? null,
+      };
+    });
+
+    let cutIndex = 0;
+
+    for (let i = 0; i < days.length - 1; i++) {
+      const currentEmpty =
+        days[i].motivacion === null &&
+        days[i].estres === null &&
+        days[i].irritabilidad === null &&
+        days[i].fatiga_general === null;
+
+      const nextEmpty =
+        days[i + 1].motivacion === null &&
+        days[i + 1].estres === null &&
+        days[i + 1].irritabilidad === null &&
+        days[i + 1].fatiga_general === null;
+
+      if (currentEmpty && nextEmpty) {
+        cutIndex = i + 2;
+      }
+    }
+
+    return days.slice(cutIndex);
+  }
 
   async function loadSelfData() {
     const { data: sessionData } = await supabase.auth.getSession();
@@ -65,8 +122,9 @@ export default function SelfPerceptionScreen() {
         )
       `)
       .eq("id_deportista", athleteData.id_deportista)
-      .order("fecha", { ascending: false })
-      .limit(7);
+      .gte("fecha", formatDate(getStartDate()))
+      .lte("fecha", formatDate(today))
+      .order("fecha", { ascending: true });
 
     if (error) {
       console.log("Error cargando autopercepción:", error.message);
@@ -94,7 +152,7 @@ export default function SelfPerceptionScreen() {
         })
         .filter(Boolean) || [];
 
-    setSelfData(formattedData as SelfItem[]);
+    setSelfData(fillWeeklySelfData(formattedData as SelfItem[]));
     setLoading(false);
   }
 
@@ -106,8 +164,18 @@ export default function SelfPerceptionScreen() {
     );
   }
 
-  const latest = selfData[0];
-  const weeklyData = selfData.slice().reverse();
+  const latest = selfData
+    .slice()
+    .reverse()
+    .find(
+      (item) =>
+        item.motivacion !== null ||
+        item.estres !== null ||
+        item.irritabilidad !== null ||
+        item.fatiga_general !== null
+    );
+
+  const weeklyData = selfData;
 
   const moodScore = latest
     ? calculateMood(
@@ -159,7 +227,7 @@ export default function SelfPerceptionScreen() {
         />
 
         {latest ? (
-          <View className="bg-blue-50 rounded-2xl p-4">
+          <View className="bg-blue-50 rounded-2xl p-4 overflow-hidden">
             <BarChart
               data={[
                 {
@@ -216,11 +284,9 @@ export default function SelfPerceptionScreen() {
         />
 
         {weeklyData.length > 0 ? (
-          <View className="bg-slate-50 rounded-2xl p-4">
+          <View className="bg-slate-50 rounded-2xl p-4 overflow-hidden">
             <BarChart
               data={weeklyData
-                .slice()
-                .reverse()
                 .flatMap((item) => [
                   {
                     value: item.motivacion || 0,
@@ -295,11 +361,9 @@ export default function SelfPerceptionScreen() {
         />
 
         {weeklyData.length > 0 ? (
-          <View className="bg-slate-50 rounded-2xl p-4">
+          <View className="bg-slate-50 rounded-2xl p-4 overflow-hidden">
             <BarChart
               data={weeklyData
-                .slice()
-                .reverse()
                 .flatMap((item) => {
                   const fatigaFisica = item.fatiga_fisica || 0;
                   const fatigaMental = item.fatiga_mental || 0;
@@ -415,11 +479,9 @@ export default function SelfPerceptionScreen() {
         />
 
        {weeklyData.length > 0 ? (
-          <View className="bg-emerald-50 rounded-2xl p-4">
+          <View className="bg-emerald-50 rounded-2xl p-4 overflow-hidden">
             <LineChart
               data={weeklyData
-                .slice()
-                .reverse()
                 .map((item) => ({
                   value: item.preparacion_entrenar || 0,
                   label: dayOnly(item.fecha),

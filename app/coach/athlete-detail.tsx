@@ -373,7 +373,7 @@ export default function CoachAthleteDetailScreen() {
               <AppCard>
                 <SectionTitle title="Evolución de carga" />
                 {weeklyTraining.length > 0 ? (
-                  <View className="bg-blue-50 rounded-2xl p-4">
+                  <View className="bg-blue-50 rounded-2xl p-4 overflow-hidden">
                     <BarChart
                       data={weeklyTraining
                         .slice()
@@ -421,7 +421,7 @@ export default function CoachAthleteDetailScreen() {
               <AppCard>
                 <SectionTitle title="Duración" />
                 {weeklyTraining.length > 0 ? (
-                  <View className="bg-violet-50 rounded-2xl p-4">
+                  <View className="bg-violet-50 rounded-2xl p-4 overflow-hidden">
                     <LineChart
                       data={weeklyTraining
                         .slice()
@@ -479,7 +479,7 @@ export default function CoachAthleteDetailScreen() {
               <AppCard>
                 <SectionTitle title="Intensidad" />
                 {weeklyTraining.length > 0 ? (
-                  <View className="bg-amber-50 rounded-2xl p-4">
+                  <View className="bg-amber-50 rounded-2xl p-4 overflow-hidden">
                     <LineChart
                       data={weeklyTraining
                         .slice()
@@ -538,7 +538,7 @@ export default function CoachAthleteDetailScreen() {
               />
 
               {weeklyLoad.length > 0 ? (
-                <View className="bg-blue-50 rounded-2xl p-4">
+                <View className="bg-blue-50 rounded-2xl p-4 overflow-hidden">
                   <BarChart
                     data={weeklyLoad.map((item) => ({
                       value: item.value,

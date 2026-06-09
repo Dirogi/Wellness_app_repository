@@ -1,6 +1,6 @@
+import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
 import { Alert, Text, TextInput, TouchableOpacity, View } from "react-native";
-
 import CoachLayout from "../../src/components/layout/CoachLayout";
 import AppButton from "../../src/components/ui/AppButton";
 import AppCard from "../../src/components/ui/AppCard";
@@ -181,7 +181,13 @@ export default function CoachProfileScreen() {
         </View>
 
         <View className="items-center mb-6">
-          <Text className="text-6xl">👤</Text>
+           <View className="w-24 h-24 rounded-full bg-blue-100 items-center justify-center">
+           <Ionicons
+              name="person-outline"
+              size={50}
+              color="#2563EB"
+            />
+        </View>
 
           <Text className="font-bold text-xl mt-3 text-center">
             {profile.fullName || "Entrenador"}

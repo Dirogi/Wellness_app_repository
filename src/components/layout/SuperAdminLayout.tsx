@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { ReactNode, useState } from "react";
@@ -8,13 +9,27 @@ type SuperAdminLayoutProps = {
   title?: string;
 };
 
-const menuItems = [
+type SuperAdminMenuItem = {
+  label: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  route: string;
+};
+
+const superAdminMenuItems: SuperAdminMenuItem[] = [
+  { label: "Dashboard", icon: "home-outline", route: "/superadmin/dashboard" },
+  { label: "Ciudades", icon: "business-outline", route: "/superadmin/cities" },
+  { label: "Centros", icon: "location-outline", route: "/superadmin/centers" },
+  { label: "Admins", icon: "shield-outline", route: "/superadmin/admins" },
+  { label: "Perfil", icon: "person-outline", route: "/superadmin/profile" },
+];
+
+/*const menuItems = [
   { label: "Dashboard", icon: "🏠", route: "/superadmin/dashboard" },
   { label: "Ciudades", icon: "🌆", route: "/superadmin/cities" },
   { label: "Centros", icon: "🏢", route: "/superadmin/centers" },
   { label: "Admins", icon: "🛡️", route: "/superadmin/admins" },
   { label: "Perfil", icon: "👤", route: "/superadmin/profile" },
-];
+];*/
 
 export default function SuperAdminLayout({
   children,
@@ -30,7 +45,11 @@ export default function SuperAdminLayout({
         onPress={() => setIsSidebarOpen(!isSidebarOpen)}
         className="absolute top-12 left-5 z-50 w-24 h-16 rounded-3xl bg-white items-center justify-center shadow border border-gray-100"
       >
-        <Text className="text-3xl">☰</Text>
+        <Ionicons
+          name="menu"
+          size={32}
+          color="#374151"
+        />
       </Pressable>
 
       {isSidebarOpen && (
@@ -46,10 +65,14 @@ export default function SuperAdminLayout({
             onPress={() => setIsSidebarOpen(false)}
             className="w-16 h-14 rounded-2xl bg-slate-100 items-center justify-center mb-4"
           >
-            <Text className="text-3xl">☰</Text>
+            <Ionicons
+              name="close"
+              size={30}
+              color="#374151"
+            />
           </Pressable>
 
-          {menuItems.map((item) => (
+          {superAdminMenuItems.map((item) => (
             <Pressable
               key={item.route}
               onPress={() => {
@@ -58,8 +81,11 @@ export default function SuperAdminLayout({
               }}
               className="items-center justify-center py-3 px-2 rounded-2xl mb-2 active:bg-blue-100 w-20"
             >
-              <Text className="text-3xl mb-1">{item.icon}</Text>
-
+              <Ionicons
+                name={item.icon}
+                size={28}
+                color="#374151"
+              />
               <Text className="text-[11px] text-center text-gray-700 font-medium">
                 {item.label}
               </Text>

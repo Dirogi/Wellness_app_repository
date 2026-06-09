@@ -231,7 +231,7 @@ export default function MedicalAthleteDetailScreen() {
             />
 
             {weeklyHeartData.length > 0 ? (
-              <View className="bg-blue-50 rounded-2xl p-4">
+              <View className="bg-blue-50 rounded-2xl p-4 overflow-hidden">
                 <LineChart
                   data={weeklyHeartData.map((item) => ({
                     value: item.hrv || 0,
@@ -284,7 +284,7 @@ export default function MedicalAthleteDetailScreen() {
             />
 
             {weeklyHeartData.length > 0 ? (
-              <View className="bg-red-50 rounded-2xl p-4">
+              <View className="bg-red-50 rounded-2xl p-4 overflow-hidden">
                 <LineChart
                   data={weeklyHeartData.map((item) => ({
                     value: item.fc_reposo || 0,
