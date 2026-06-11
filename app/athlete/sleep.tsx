@@ -72,6 +72,43 @@ export default function SleepScreen() {
     });
   }
 
+  function getCurrentMonthWeekSleepData(data: SleepItem[]) {
+    const today = new Date();
+    const currentDay = today.getDate();
+
+    let startDay = 1;
+    let endDay = 7;
+
+    if (currentDay <= 7) {
+      startDay = 1;
+      endDay = 7;
+    } else if (currentDay <= 14) {
+      startDay = 8;
+      endDay = 14;
+    } else if (currentDay <= 21) {
+      startDay = 15;
+      endDay = 21;
+    } else {
+      startDay = 22;
+      endDay = new Date(
+        today.getFullYear(),
+        today.getMonth() + 1,
+        0
+      ).getDate();
+    }
+
+    return data.filter((item) => {
+      const itemDate = new Date(item.fecha);
+
+      return (
+        itemDate.getFullYear() === today.getFullYear() &&
+        itemDate.getMonth() === today.getMonth() &&
+        itemDate.getDate() >= startDay &&
+        itemDate.getDate() <= endDay
+      );
+    });
+  }
+
   useEffect(() => {
     loadSleepData();
   }, []);
@@ -80,7 +117,10 @@ export default function SleepScreen() {
     const { data: sessionData } = await supabase.auth.getSession();
     const userId = sessionData.session?.user.id;
 
-    if (!userId) return;
+    if (!userId) {
+      setLoading(false);
+      return;
+    }
 
     const { data: athleteData } = await supabase
       .from("deportistas")
@@ -88,7 +128,10 @@ export default function SleepScreen() {
       .eq("id_usuario", userId)
       .single();
 
-    if (!athleteData) return;
+    if (!athleteData) {
+      setLoading(false);
+      return;
+    }
 
     const { data, error } = await supabase
       .from("registros_diarios")
@@ -103,7 +146,6 @@ export default function SleepScreen() {
         )
       `)
       .eq("id_deportista", athleteData.id_deportista)
-      .order("fecha", { ascending: false })
       .gte("fecha", formatDate(startOfMonth))
       .lte("fecha", formatDate(today))
       .order("fecha", { ascending: false })
@@ -144,7 +186,7 @@ export default function SleepScreen() {
 
   const latest = sleepData[0];
 
-  const weeklyData = sleepData.slice(0, 7);
+  const weeklyData = getCurrentMonthWeekSleepData(sleepData);
   const monthlyData = fillMonthSleepData(sleepData);
 
   const weeklyAvgHours = average(

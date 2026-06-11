@@ -99,7 +99,10 @@ export default function TrainingScreen() {
     const { data: sessionData } = await supabase.auth.getSession();
     const userId = sessionData.session?.user.id;
 
-    if (!userId) return;
+    if (!userId) {
+      setLoading(false);
+      return;
+    }
 
     const { data: athleteData } = await supabase
       .from("deportistas")
@@ -107,7 +110,10 @@ export default function TrainingScreen() {
       .eq("id_usuario", userId)
       .single();
 
-    if (!athleteData) return;
+    if (!athleteData) {
+      setLoading(false);
+      return;
+    }
 
     const { data, error } = await supabase
       .from("registros_diarios")
@@ -126,6 +132,7 @@ export default function TrainingScreen() {
 
     if (error) {
       console.log("Error cargando entrenamientos:", error.message);
+      setLoading(false);
       return;
     }
 
@@ -152,6 +159,13 @@ export default function TrainingScreen() {
   }
 
   const weeklyData = fillWeeklyTrainingData(trainingData);
+  const completedWeeklyData = weeklyData.filter(
+    (item) =>
+      item.duracion !== null ||
+      item.intensidad_percibida !== null ||
+      item.carga_de_entrenamiento !== null
+  );
+
   const monthlyData = trainingData.filter((item) => {
     const itemDate = new Date(item.fecha);
     const today = new Date();
@@ -162,8 +176,8 @@ export default function TrainingScreen() {
     );
   });
 
-  const totalSessions = weeklyData.length;
-  const totalMinutes = weeklyData.reduce(
+  const totalSessions = completedWeeklyData.length;
+  const totalMinutes = completedWeeklyData.reduce(
     (sum, item) => sum + (item.duracion || 0),
     0
   );
@@ -171,7 +185,7 @@ export default function TrainingScreen() {
   const averageLoad =
     totalSessions > 0
       ? Math.round(
-          weeklyData.reduce(
+          completedWeeklyData.reduce(
             (sum, item) => sum + (item.carga_de_entrenamiento || 0),
             0
           ) / totalSessions
@@ -181,7 +195,7 @@ export default function TrainingScreen() {
   const averageIntensity =
     totalSessions > 0
       ? Math.round(
-          weeklyData.reduce(
+          completedWeeklyData.reduce(
             (sum, item) => sum + (item.intensidad_percibida || 0),
             0
           ) / totalSessions
@@ -201,16 +215,6 @@ export default function TrainingScreen() {
     return Object.entries(result);
   }, [monthlyData]);
 
-  const currentMonthTrainingData = trainingData.filter((item) => {
-    const itemDate = new Date(item.fecha);
-    const today = new Date();
-
-    return (
-      itemDate.getFullYear() === today.getFullYear() &&
-      itemDate.getMonth() === today.getMonth()
-    );
-  });
-
   const weeklyLoad = [
     { label: "S1", value: 0 },
     { label: "S2", value: 0 },
@@ -218,7 +222,7 @@ export default function TrainingScreen() {
     { label: "S4", value: 0 },
   ];
 
-  currentMonthTrainingData.forEach((item) => {
+  monthlyData.forEach((item) => {
     const day = Number(item.fecha.split("-")[2]);
 
     let weekIndex = 0;
@@ -557,7 +561,7 @@ export default function TrainingScreen() {
                       </View>
 
                       <Text className="font-semibold text-gray-700">
-                        {count} sesiones
+                        {count} {count === 1 ? "sesión" : "sesiones"}
                       </Text>
                     </View>
                   ))}
@@ -643,23 +647,4 @@ function formatMinutes(minutes: number) {
 function formatDate(date: string) {
   const [year, month, day] = date.split("-");
   return `${day}/${month}/${year}`;
-}
-
-
-function groupLoadByWeek(data: TrainingItem[]) {
-  const weeks = [0, 0, 0, 0];
-
-  data.forEach((item) => {
-    const day = Number(item.fecha.split("-")[2]);
-
-    if (day <= 7) weeks[0] += item.carga_de_entrenamiento || 0;
-    else if (day <= 14) weeks[1] += item.carga_de_entrenamiento || 0;
-    else if (day <= 21) weeks[2] += item.carga_de_entrenamiento || 0;
-    else weeks[3] += item.carga_de_entrenamiento || 0;
-  });
-
-  return weeks.map((value, index) => ({
-    label: `S${index + 1}`,
-    value,
-  }));
 }

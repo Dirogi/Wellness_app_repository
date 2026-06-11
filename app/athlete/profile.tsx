@@ -33,7 +33,9 @@ export default function AthleteProfileScreen() {
     const { data: sessionData } = await supabase.auth.getSession();
     const userId = sessionData.session?.user.id;
 
-    if (!userId) return;
+    if (!userId) {
+      return;
+    }
 
     setIdUsuario(userId);
 
@@ -81,20 +83,68 @@ export default function AthleteProfileScreen() {
       menstrualEnabled: Boolean(deportista?.opcion_ciclo_menstrual),
     });
   }
+  function parseNumber(value: string) {
+    const number = Number(value.replace(",", "."));
+    return Number.isFinite(number) ? number : null;
+  }
 
   async function handleSave() {
     if (!idUsuario) return;
+
+    const height = profile.height ? parseNumber(profile.height) : null;
+    const weight = profile.weight ? parseNumber(profile.weight) : null;
+
+    if (!profile.fullName.trim() || !profile.email.trim()) {
+      Alert.alert("Campos obligatorios", "Nombre y correo no pueden estar vacíos.");
+      return;
+    }
+
+    const normalizedEmail = profile.email.trim().toLowerCase();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!emailRegex.test(normalizedEmail)) {
+      Alert.alert(
+        "Correo no válido",
+        "Introduce un correo electrónico válido."
+      );
+      return;
+    }
+
+    if (height !== null && (Number.isNaN(height) || height <= 0 || height > 2.5)) {
+      Alert.alert("Altura no válida", "Introduce una altura válida en metros.");
+      return;
+    }
+
+    if (weight !== null && (Number.isNaN(weight) || weight <= 0 || weight > 300)) {
+      Alert.alert("Peso no válido", "Introduce un peso válido en kg.");
+      return;
+    }
 
     const fechaNacimiento =
       profile.birthYear && profile.birthMonth && profile.birthDay
         ? `${profile.birthYear}-${profile.birthMonth}-${profile.birthDay}`
         : null;
 
+    if (fechaNacimiento) {
+      const birthDate = new Date(fechaNacimiento);
+      const today = new Date();
+
+      const validDate =
+        birthDate.getFullYear() === Number(profile.birthYear) &&
+        birthDate.getMonth() + 1 === Number(profile.birthMonth) &&
+        birthDate.getDate() === Number(profile.birthDay);
+
+      if (!validDate || birthDate > today) {
+        Alert.alert("Fecha no válida", "Introduce una fecha de nacimiento válida.");
+        return;
+      }
+    }
+
     const { error: usuarioError } = await supabase
       .from("usuarios")
       .update({
-        correo_electronico: profile.email,
-        nombre_apellidos: profile.fullName,
+        correo_electronico: normalizedEmail,
+        nombre_apellidos: profile.fullName.trim(),
         updated_at: new Date().toISOString(),
       })
       .eq("id_usuario", idUsuario);
@@ -107,11 +157,11 @@ export default function AthleteProfileScreen() {
     const { error: deportistaError } = await supabase
       .from("deportistas")
       .update({
-        deporte: profile.sport || null,
+        deporte: profile.sport.trim() || null,
         fecha_nacimiento: fechaNacimiento,
-        genero: profile.gender || null,
-        altura: profile.height ? Number(profile.height) : null,
-        peso: profile.weight ? Number(profile.weight) : null,
+        genero: profile.gender.trim() || null,
+        altura: height,
+        peso: weight,
         opcion_ciclo_menstrual: profile.menstrualEnabled,
       })
       .eq("id_usuario", idUsuario);
@@ -186,6 +236,11 @@ export default function AthleteProfileScreen() {
                   .select("id_estado_cuenta")
                   .eq("nombre_estado", "bloqueada")
                   .single();
+
+                if (!estadoEliminada) {
+                  Alert.alert("Error", "No se ha encontrado el estado bloqueada.");
+                  return;
+                }
 
               // Desactivar cuenta
               const { error } = await supabase
@@ -402,6 +457,7 @@ function ProfileField({
           value={value}
           onChangeText={onChange}
           keyboardType={keyboardType}
+          maxLength={100}
           className="bg-slate-50 border border-gray-200 rounded-2xl px-4 py-3"
         />
       ) : (

@@ -15,7 +15,7 @@ type HeartItem = {
   fecha: string;
   hrv: number | null;
   fc_reposo: number | null;
-  notas_fc: string | null;
+  notas_fc?: string | null;
 };
 
 type DiscomfortItem = {
@@ -35,6 +35,59 @@ export default function MedicalAthleteDetailScreen() {
   const [athleteName, setAthleteName] = useState("Deportista");
   const [heartData, setHeartData] = useState<HeartItem[]>([]);
   const [discomfortData, setDiscomfortData] = useState<DiscomfortItem[]>([]);
+
+  function formatDateToDB(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+function getStartDate() {
+  const today = new Date();
+  const date = new Date(today);
+
+  date.setDate(today.getDate() - 7);
+
+  return date;
+}
+
+function fillWeeklyHeartData(data: HeartItem[]) {
+  const today = new Date();
+  const startDate = getStartDate();
+
+  const days = Array.from({ length: 8 }, (_, index) => {
+    const date = new Date(startDate);
+    date.setDate(startDate.getDate() + index);
+
+    const dateString = formatDateToDB(date);
+
+    const existing = data.find((item) => item.fecha === dateString);
+
+    return {
+      fecha: dateString,
+      hrv: existing?.hrv ?? null,
+      fc_reposo: existing?.fc_reposo ?? null,
+    };
+  });
+
+  let cutIndex = 0;
+
+  for (let i = 0; i < days.length - 1; i++) {
+    const currentEmpty =
+      days[i].hrv === null && days[i].fc_reposo === null;
+
+    const nextEmpty =
+      days[i + 1].hrv === null && days[i + 1].fc_reposo === null;
+
+    if (currentEmpty && nextEmpty) {
+      cutIndex = i + 2;
+    }
+  }
+
+  return days.slice(cutIndex);
+}
 
   useEffect(() => {
     loadAthleteDetail();
@@ -125,7 +178,7 @@ export default function MedicalAthleteDetailScreen() {
         })
         .filter(Boolean) || [];
 
-    setHeartData(hearts as HeartItem[]);
+    setHeartData(fillWeeklyHeartData(hearts as HeartItem[]));
     setDiscomfortData(discomforts as DiscomfortItem[]);
     setLoading(false);
   }
@@ -156,6 +209,18 @@ export default function MedicalAthleteDetailScreen() {
     });
   }, [discomfortData]);
 
+  const recentDiscomfort = useMemo(() => {
+    const limitDate = new Date();
+
+    limitDate.setMonth(limitDate.getMonth() - 2);
+
+    return discomfortData.filter((item) => {
+      const itemDate = new Date(item.fecha);
+
+      return itemDate >= limitDate;
+    });
+  }, [discomfortData]);
+
   const averageDiscomfortIntensity =
     last7Discomfort.length > 0
       ? Math.round(
@@ -167,10 +232,12 @@ export default function MedicalAthleteDetailScreen() {
       : 0;
 
   const affectedAreas = [
-    ...new Set(discomfortData.flatMap((item) => item.zonas)),
+    ...new Set(currentMonthDiscomfort.flatMap((item) => item.zonas)),
   ];
 
-  const areaCount = countBy(discomfortData.flatMap((item) => item.zonas));
+  const areaCount = countBy(
+    currentMonthDiscomfort.flatMap((item) => item.zonas)
+  );
 
   const typeCount = countBy(
     currentMonthDiscomfort.map((item) => item.tipo_molestia || "Sin tipo")
@@ -387,13 +454,13 @@ export default function MedicalAthleteDetailScreen() {
 
           <AppCard className="mb-6">
             <SectionTitle
-              title="Molestias recientes"
-              subtitle="Últimos registros del deportista"
+              title="Historial de molestias"
+              subtitle="Últimos registros del deportista (2 meses max.)"
             />
 
             <View className="gap-3">
-              {discomfortData.length > 0 ? (
-                discomfortData.slice(0, 5).map((item, index) => {
+              {recentDiscomfort.length > 0 ? (
+                recentDiscomfort.slice(0, 5).map((item, index) => {
                   const intensityStyle = getIntensityColor(
                     item.intensidad || 0
                   );
@@ -492,7 +559,7 @@ export default function MedicalAthleteDetailScreen() {
                   >
                     <Text className="font-bold text-amber-800">{type}</Text>
                     <Text className="font-semibold text-amber-800">
-                      {count} registros
+                      {count} {count === 1 ? "registro" : "registros"}
                     </Text>
                   </View>
                 ))

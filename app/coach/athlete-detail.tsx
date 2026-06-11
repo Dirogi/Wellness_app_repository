@@ -40,6 +40,71 @@ export default function CoachAthleteDetailScreen() {
   const [trainingData, setTrainingData] = useState<TrainingItem[]>([]);
   const [discomfortData, setDiscomfortData] = useState<DiscomfortItem[]>([]);
 
+  function formatDateToDB(date: Date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
+  }
+
+  function getStartDate() {
+    const today = new Date();
+    const date = new Date(today);
+
+    date.setDate(today.getDate() - 7);
+
+    return date;
+  }
+
+  function fillWeeklyTrainingData(data: TrainingItem[]) {
+    const today = new Date();
+    const startDate = getStartDate();
+
+    const days = Array.from({ length: 8 }, (_, index) => {
+      const date = new Date(startDate);
+      date.setDate(startDate.getDate() + index);
+
+      const dateString = formatDateToDB(date);
+
+      const existing = data.find((item) => item.fecha === dateString);
+
+      return {
+        fecha: dateString,
+        tipo_entrenamiento: existing?.tipo_entrenamiento ?? null,
+        duracion: existing?.duracion ?? null,
+        intensidad_percibida: existing?.intensidad_percibida ?? null,
+        carga_de_entrenamiento: existing?.carga_de_entrenamiento ?? null,
+        notas_entrenamiento: existing?.notas_entrenamiento ?? null,
+      };
+    });
+
+    let cutIndex = 0;
+
+    for (let i = 0; i < days.length - 2; i++) {
+      const firstEmpty =
+        days[i].duracion === null &&
+        days[i].intensidad_percibida === null &&
+        days[i].carga_de_entrenamiento === null;
+
+      const secondEmpty =
+        days[i + 1].duracion === null &&
+        days[i + 1].intensidad_percibida === null &&
+        days[i + 1].carga_de_entrenamiento === null;
+
+      const thirdEmpty =
+        days[i + 2].duracion === null &&
+        days[i + 2].intensidad_percibida === null &&
+        days[i + 2].carga_de_entrenamiento === null;
+
+      if (firstEmpty && secondEmpty && thirdEmpty) {
+        cutIndex = i + 3;
+      }
+    }
+
+    return days.slice(cutIndex);
+  }
+
   useEffect(() => {
     loadAthleteDetail();
   }, [athleteId]);
@@ -138,17 +203,42 @@ export default function CoachAthleteDetailScreen() {
     setLoading(false);
   }
 
-  const weeklyTraining = trainingData.slice(0, 7);
-  const monthlyTraining = trainingData.slice(0, 30);
+  const weeklyTraining = fillWeeklyTrainingData(trainingData);
 
-  const totalSessions = weeklyTraining.length;
+  const completedWeeklyTraining = weeklyTraining.filter(
+    (item) =>
+      item.duracion !== null ||
+      item.intensidad_percibida !== null ||
+      item.carga_de_entrenamiento !== null
+  );
 
-  const totalMinutes = weeklyTraining.reduce(
+  const dailyLoadMaxValue = Math.max(
+    ...weeklyTraining.map(
+      (item) => item.carga_de_entrenamiento || 0
+    )
+  );
+
+  const dailyLoadChartMaxValue =
+    dailyLoadMaxValue > 0 ? dailyLoadMaxValue + 100 : 1000;
+
+  const monthlyTraining = trainingData.filter((item) => {
+    const itemDate = new Date(item.fecha);
+    const today = new Date();
+
+    return (
+      itemDate.getFullYear() === today.getFullYear() &&
+      itemDate.getMonth() === today.getMonth()
+    );
+  });
+
+  const totalSessions = completedWeeklyTraining.length;
+
+  const totalMinutes = completedWeeklyTraining.reduce(
     (sum, item) => sum + (item.duracion || 0),
     0
   );
 
-  const totalLoad = weeklyTraining.reduce(
+  const totalLoad = completedWeeklyTraining.reduce(
     (sum, item) => sum + (item.carga_de_entrenamiento || 0),
     0
   );
@@ -159,7 +249,7 @@ export default function CoachAthleteDetailScreen() {
   const averageIntensity =
     totalSessions > 0
       ? Math.round(
-          weeklyTraining.reduce(
+          completedWeeklyTraining.reduce(
             (sum, item) => sum + (item.intensidad_percibida || 0),
             0
           ) / totalSessions
@@ -214,6 +304,18 @@ export default function CoachAthleteDetailScreen() {
     });
   }, [discomfortData]);
 
+  const recentDiscomfort = useMemo(() => {
+    const limitDate = new Date();
+
+    limitDate.setMonth(limitDate.getMonth() - 2);
+
+    return discomfortData.filter((item) => {
+      const itemDate = new Date(item.fecha);
+
+      return itemDate >= limitDate;
+    });
+  }, [discomfortData]);
+
   const averageDiscomfortIntensity =
     last7Discomfort.length > 0
       ? Math.round(
@@ -225,10 +327,12 @@ export default function CoachAthleteDetailScreen() {
       : 0;
 
   const affectedAreas = [
-    ...new Set(discomfortData.flatMap((item) => item.zonas)),
+    ...new Set(currentMonthDiscomfort.flatMap((item) => item.zonas)),
   ];
 
-  const areaCount = countBy(discomfortData.flatMap((item) => item.zonas));
+  const areaCount = countBy(
+    currentMonthDiscomfort.flatMap((item) => item.zonas)
+  );
 
   const typeCount = countBy(
     currentMonthDiscomfort.map((item) => item.tipo_molestia || "Sin tipo")
@@ -301,7 +405,7 @@ export default function CoachAthleteDetailScreen() {
 
                 <View className="gap-3">
                   {trainingData.length > 0 ? (
-                    trainingData.map((item, index) => (
+                    trainingData.slice(0, 7).map((item, index) => (
                       <View
                         key={`${item.fecha}-${index}`}
                         className="bg-slate-50 rounded-2xl p-4 flex-row justify-between items-center"
@@ -376,8 +480,6 @@ export default function CoachAthleteDetailScreen() {
                   <View className="bg-blue-50 rounded-2xl p-4 overflow-hidden">
                     <BarChart
                       data={weeklyTraining
-                        .slice()
-                        .reverse()
                         .map((item) => ({
                           value: item.carga_de_entrenamiento || 0,
                           label: dayOnly(item.fecha),
@@ -389,7 +491,7 @@ export default function CoachAthleteDetailScreen() {
                       endSpacing={12}
                       roundedTop
                       frontColor="#2563EB"
-                      maxValue={1000}
+                      maxValue={dailyLoadChartMaxValue}
                       noOfSections={5}
                       yAxisLabelSuffix=" AU"
                       yAxisTextStyle={{
@@ -424,8 +526,6 @@ export default function CoachAthleteDetailScreen() {
                   <View className="bg-violet-50 rounded-2xl p-4 overflow-hidden">
                     <LineChart
                       data={weeklyTraining
-                        .slice()
-                        .reverse()
                         .map((item) => ({
                           value: item.duracion || 0,
                           label: dayOnly(item.fecha),
@@ -440,6 +540,9 @@ export default function CoachAthleteDetailScreen() {
                       startOpacity={0.4}
                       endOpacity={0.05}
                       color="#7C3AED"
+                      formatYLabel={(value) =>
+                        Math.round(Number(value)).toString()
+                      }
                       thickness={3}
                       dataPointsColor="#7C3AED"
                       yAxisLabelSuffix=" min"
@@ -482,8 +585,6 @@ export default function CoachAthleteDetailScreen() {
                   <View className="bg-amber-50 rounded-2xl p-4 overflow-hidden">
                     <LineChart
                       data={weeklyTraining
-                        .slice()
-                        .reverse()
                         .map((item) => ({
                           value: item.intensidad_percibida || 0,
                           label: dayOnly(item.fecha),
@@ -502,6 +603,9 @@ export default function CoachAthleteDetailScreen() {
                       dataPointsColor="#D97706"
                       maxValue={10}
                       noOfSections={5}
+                      formatYLabel={(value) =>
+                        Math.round(Number(value)).toString()
+                      }
                       yAxisTextStyle={{
                         color: "#6B7280",
                         fontSize: 10,
@@ -600,7 +704,7 @@ export default function CoachAthleteDetailScreen() {
                             {type}
                           </Text>
                           <Text className="font-bold text-emerald-700">
-                            {count} sesiones
+                            {count} {count === 1 ? "sesión" : "sesiones"}
                           </Text>
                         </View>
                       ))
@@ -653,13 +757,13 @@ export default function CoachAthleteDetailScreen() {
 
           <AppCard className="mb-6">
             <SectionTitle
-              title="Molestias recientes"
-              subtitle="Últimos registros del deportista"
+              title="Historial de molestias"
+              subtitle="Últimos registros del deportista (2 meses max.)"
             />
 
             <View className="gap-3">
-              {discomfortData.length > 0 ? (
-                discomfortData.slice(0, 5).map((item, index) => {
+              {recentDiscomfort.length > 0 ? (
+                recentDiscomfort.slice(0, 5).map((item, index) => {
                   const intensityStyle = getIntensityColor(
                     item.intensidad || 0
                   );

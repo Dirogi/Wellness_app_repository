@@ -74,7 +74,10 @@ export default function HeartRateScreen() {
     const { data: sessionData } = await supabase.auth.getSession();
     const userId = sessionData.session?.user.id;
 
-    if (!userId) return;
+    if (!userId) {
+      setLoading(false);
+      return;
+    }
 
     const { data: athleteData } = await supabase
       .from("deportistas")
@@ -82,7 +85,10 @@ export default function HeartRateScreen() {
       .eq("id_usuario", userId)
       .single();
 
-    if (!athleteData) return;
+    if (!athleteData) {
+      setLoading(false);
+      return;
+    }
 
     const { data, error } = await supabase
       .from("registros_diarios")
@@ -100,6 +106,7 @@ export default function HeartRateScreen() {
 
     if (error) {
       console.log("Error cargando frecuencia cardiaca:", error.message);
+      setLoading(false);
       return;
     }
 
@@ -261,57 +268,6 @@ export default function HeartRateScreen() {
   );
 }
 
-function SimpleLineChart({
-  data,
-  maxValue,
-  color,
-  unit,
-}: {
-  data: { label: string; value: number }[];
-  maxValue: number;
-  color: "blue" | "red";
-  unit: string;
-}) {
-  if (data.length === 0) {
-    return (
-      <View className="h-48 bg-slate-50 rounded-2xl p-4 items-center justify-center">
-        <Text className="text-gray-500">Sin datos suficientes</Text>
-      </View>
-    );
-  }
-
-  const colorClass = color === "blue" ? "bg-blue-500" : "bg-red-500";
-
-  return (
-    <View className="h-48 bg-slate-50 rounded-2xl p-4">
-      <View className="flex-row items-end justify-between h-32">
-        {data.map((item, index) => {
-          const height = (item.value / maxValue) * 120;
-
-          return (
-            <View key={`${item.label}-${index}`} className="items-center flex-1">
-              <View
-                className={`w-3 h-3 rounded-full ${colorClass}`}
-                style={{ marginBottom: height }}
-              />
-
-              <Text className="text-[10px] text-gray-400 mt-2">
-                {item.label}
-              </Text>
-            </View>
-          );
-        })}
-      </View>
-
-      <View className="flex-row justify-between mt-3">
-        <Text className="text-xs text-gray-400">0 {unit}</Text>
-        <Text className="text-xs text-gray-400">
-          {maxValue} {unit}
-        </Text>
-      </View>
-    </View>
-  );
-}
 
 function first(value: any) {
   if (Array.isArray(value)) return value[0];

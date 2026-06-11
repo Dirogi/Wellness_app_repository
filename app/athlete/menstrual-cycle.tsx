@@ -48,7 +48,10 @@ export default function MenstrualCycleScreen() {
     const { data: sessionData } = await supabase.auth.getSession();
     const userId = sessionData.session?.user.id;
 
-    if (!userId) return;
+    if (!userId) {
+      setLoading(false);
+      return;
+    }
 
     const { data: athleteData } = await supabase
       .from("deportistas")
@@ -56,7 +59,10 @@ export default function MenstrualCycleScreen() {
       .eq("id_usuario", userId)
       .single();
 
-    if (!athleteData) return;
+    if (!athleteData) {
+      setLoading(false);
+      return;
+    }
 
     const { data, error } = await supabase
       .from("registros_diarios")
@@ -87,6 +93,7 @@ export default function MenstrualCycleScreen() {
 
     if (error) {
       console.log("Error cargando ciclo menstrual:", error.message);
+      setLoading(false);
       return;
     }
 
@@ -195,7 +202,7 @@ export default function MenstrualCycleScreen() {
         />
 
         {activePeriodData.length > 0 ? (
-          <View className="bg-red-50 rounded-2xl p-4">
+          <View className="bg-red-50 rounded-2xl p-4 overflow-hidden">
             <BarChart
               data={activePeriodData.map((item) => ({
                 value: item.sangrado || 0,
@@ -302,9 +309,4 @@ function BloodDropIndicator({ value }: { value: number }) {
 function first(value: any) {
   if (Array.isArray(value)) return value[0];
   return value;
-}
-
-function shortDate(date: string) {
-  const [, month, day] = date.split("-");
-  return `${day}/${month}`;
 }

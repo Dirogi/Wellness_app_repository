@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Text, View } from "react-native";
-import { BarChart, LineChart } from "react-native-gifted-charts";
+import { BarChart } from "react-native-gifted-charts";
 import AthleteLayout from "../../src/components/layout/AthleteLayout";
 import AppCard from "../../src/components/ui/AppCard";
 import MetricCard from "../../src/components/ui/MetricCard";
@@ -95,7 +95,10 @@ export default function SelfPerceptionScreen() {
     const { data: sessionData } = await supabase.auth.getSession();
     const userId = sessionData.session?.user.id;
 
-    if (!userId) return;
+    if (!userId) {
+      setLoading(false);
+      return;
+    }
 
     const { data: athleteData } = await supabase
       .from("deportistas")
@@ -103,7 +106,10 @@ export default function SelfPerceptionScreen() {
       .eq("id_usuario", userId)
       .single();
 
-    if (!athleteData) return;
+    if (!athleteData) {
+      setLoading(false);
+      return;
+    }
 
     const { data, error } = await supabase
       .from("registros_diarios")
@@ -128,6 +134,7 @@ export default function SelfPerceptionScreen() {
 
     if (error) {
       console.log("Error cargando autopercepción:", error.message);
+      setLoading(false);
       return;
     }
 
@@ -367,7 +374,18 @@ export default function SelfPerceptionScreen() {
                 .flatMap((item) => {
                   const fatigaFisica = item.fatiga_fisica || 0;
                   const fatigaMental = item.fatiga_mental || 0;
-                  const fatigaMedia = Math.round((fatigaFisica + fatigaMental) / 2);
+                  const fatigueValues = [
+                    item.fatiga_fisica,
+                    item.fatiga_mental,
+                  ].filter((value) => value !== null) as number[];
+
+                  const fatigaMedia =
+                    fatigueValues.length > 0
+                      ? Math.round(
+                          fatigueValues.reduce((sum, value) => sum + value, 0) /
+                            fatigueValues.length
+                        )
+                      : 0;
 
                   return [
                     {
@@ -480,25 +498,19 @@ export default function SelfPerceptionScreen() {
 
        {weeklyData.length > 0 ? (
           <View className="bg-emerald-50 rounded-2xl p-4 overflow-hidden">
-            <LineChart
-              data={weeklyData
-                .map((item) => ({
-                  value: item.preparacion_entrenar || 0,
-                  label: dayOnly(item.fecha),
-                }))}
+            <BarChart
+              data={weeklyData.map((item) => ({
+                value: item.preparacion_entrenar || 0,
+                label: dayOnly(item.fecha),
+              }))}
               height={180}
-              curved
-              areaChart
+              barWidth={18}
+              spacing={22}
               initialSpacing={12}
               endSpacing={12}
-              startFillColor="#10B981"
-              endFillColor="#D1FAE5"
-              startOpacity={0.4}
-              endOpacity={0.05}
-              color="#059669"
-              thickness={3}
-              dataPointsColor="#059669"
-              maxValue={10}
+              roundedTop
+              frontColor="#059669"
+              maxValue={5}
               noOfSections={5}
               yAxisTextStyle={{
                 color: "#6B7280",

@@ -13,6 +13,7 @@ type AthleteSummary = {
   discomfort?: {
     type: string;
     intensity: number;
+    date: string;
   };
   hrv?: number;
   restingHr?: number;
@@ -21,6 +22,7 @@ type AthleteSummary = {
 export default function MedicalStaffDashboard() {
   const [loading, setLoading] = useState(true);
   const [athletes, setAthletes] = useState<AthleteSummary[]>([]);
+  const [staffName, setStaffName] = useState("Staff médico");
 
   useEffect(() => {
     loadDashboard();
@@ -34,7 +36,12 @@ export default function MedicalStaffDashboard() {
 
     const { data: worker, error: workerError } = await supabase
       .from("trabajadores")
-      .select("id_trabajador")
+      .select(`
+        id_trabajador,
+        usuarios(
+          nombre_apellidos
+        )
+      `)
       .eq("id_usuario", userId)
       .single();
 
@@ -42,6 +49,11 @@ export default function MedicalStaffDashboard() {
       console.log("Error obteniendo staff médico:", workerError?.message);
       return;
     }
+
+    const workerUser = first((worker as any).usuarios);
+    setStaffName(
+      workerUser?.nombre_apellidos || "Staff médico"
+    );
 
     const { data, error } = await supabase
       .from("asignaciones")
@@ -87,9 +99,14 @@ export default function MedicalStaffDashboard() {
           .map((registro: any) => first(registro.frecuencias_cardiacas))
           .find(Boolean);
 
-        const latestDiscomfort = registros
-          .map((registro: any) => first(registro.molestias))
-          .find((molestia: any) => molestia?.dolor);
+        const latestDiscomfortRegister = registros.find((registro: any) => {
+          const molestia = first(registro.molestias);
+          return molestia?.dolor;
+        });
+
+        const latestDiscomfort = latestDiscomfortRegister
+          ? first(latestDiscomfortRegister.molestias)
+          : null;
 
         return {
           id_deportista: deportista?.id_deportista,
@@ -100,6 +117,7 @@ export default function MedicalStaffDashboard() {
             ? {
                 type: latestDiscomfort.tipo_molestia || "Molestia",
                 intensity: latestDiscomfort.intensidad || 0,
+                date: latestDiscomfortRegister.fecha,
               }
             : undefined,
         };
@@ -110,6 +128,18 @@ export default function MedicalStaffDashboard() {
   }
 
   const athletesWithDiscomfort = athletes.filter((athlete) => athlete.discomfort);
+  const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+    const recentAthletesWithDiscomfort = athletesWithDiscomfort.filter(
+      (athlete) => {
+        const date = athlete.discomfort?.date;
+
+        if (!date) return false;
+
+        return new Date(date) >= oneWeekAgo;
+    }
+  );
   const hrvAlerts = athletes.filter((athlete) => (athlete.hrv || 0) >= 80);
   const restingHrAlerts = athletes.filter((athlete) => (athlete.restingHr || 0) >= 60);
 
@@ -123,8 +153,8 @@ export default function MedicalStaffDashboard() {
 
   return (
     <MedicalStaffLayout title="Dashboard">
-      <Text className="text-gray-500 mb-6">
-        ¡Bienvenido/a, Staff médico!
+      <Text className="text-black-500 mb-6 text-center">
+        ¡Bienvenido/a, {staffName}!
       </Text>
 
       <View className="mb-6">
@@ -143,8 +173,8 @@ export default function MedicalStaffDashboard() {
         />
 
         <View className="gap-3">
-          {athletesWithDiscomfort.length > 0 ? (
-            athletesWithDiscomfort.map((athlete) => {
+          {recentAthletesWithDiscomfort.length > 0 ? (
+            recentAthletesWithDiscomfort.map((athlete) => {
               const intensity = athlete.discomfort?.intensity || 0;
               const intensityStyle = getIntensityColor(intensity);
 
@@ -167,6 +197,9 @@ export default function MedicalStaffDashboard() {
 
                   <Text className="text-gray-500">
                     Molestia: {athlete.discomfort?.type}
+                  </Text>
+                  <Text className="text-gray-500 text-sm mt-1">
+                    Fecha: {formatDate(athlete.discomfort?.date || "")}
                   </Text>
                 </View>
               );
@@ -245,6 +278,14 @@ export default function MedicalStaffDashboard() {
 function first(value: any) {
   if (Array.isArray(value)) return value[0];
   return value;
+}
+
+function formatDate(date: string) {
+  const [year, month, day] = date.split("-");
+
+  if (!year || !month || !day) return date;
+
+  return `${day}/${month}/${year}`;
 }
 
 function getIntensityColor(intensity: number) {

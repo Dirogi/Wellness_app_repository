@@ -80,7 +80,10 @@ export default function AthleteDashboard() {
     const { data: sessionData } = await supabase.auth.getSession();
     const userId = sessionData.session?.user.id;
 
-    if (!userId) return;
+    if (!userId) {
+      setLoading(false);
+      return;
+}
 
     const { data: userData } = await supabase
       .from("usuarios")
@@ -94,7 +97,10 @@ export default function AthleteDashboard() {
       .eq("id_usuario", userId)
       .single();
 
-    if (!athleteData) return;
+    if (!athleteData) {
+      setLoading(false);
+      return;
+    }
 
     const { data: registers, error } = await supabase
       .from("registros_diarios")
@@ -157,17 +163,26 @@ export default function AthleteDashboard() {
       .filter(Boolean);
 
     const discomforts = rows
-      .map((r: any) => first(r.molestias))
-      .filter((m: any) => m?.dolor);
+      .map((r: any) => {
+        const discomfort = first(r.molestias);
 
-    const latestTraining = trainings[0];
+        if (!discomfort?.dolor) return null;
+
+        return {
+          ...discomfort,
+          fecha: r.fecha,
+        };
+      })
+      .filter(Boolean);
+
+    const latestTraining = trainings.slice().reverse()[0];
 
     const latestTrainingLoad =
       latestTraining?.carga_de_entrenamiento || 0;
 
-    const latestSleep = sleeps[0];
-    const latestHeart = hearts[0];
-    const latestPerception = perceptions[0];
+    const latestSleep = sleeps.slice().reverse()[0];
+    const latestHeart = hearts.slice().reverse()[0];
+    const latestPerception = perceptions.slice().reverse()[0];
 
     const moodScore = latestPerception
       ? calculateMood(
@@ -178,14 +193,15 @@ export default function AthleteDashboard() {
       : null;
 
     const moodValue = moodScore || 0;
-    const sleepScore =
-      Math.min(
-        Math.round(Number(latestSleep.horas_de_sueno)),
-        10
-      );
+    const sleepScore = latestSleep?.horas_de_sueno
+      ? Math.min(
+          Math.round(Number(latestSleep.horas_de_sueno)),
+          10
+        )
+      : null;
 
     const generalStatus =
-      moodScore && latestSleep?.horas_de_sueno
+      moodScore && sleepScore
         ? Math.round((moodScore + sleepScore) / 2)
         : moodScore || null;
 
@@ -244,8 +260,8 @@ export default function AthleteDashboard() {
           ? "Peligro"
           : "Sin datos",
       hasPain: discomforts.length > 0,
-      painIntensity: discomforts[0]?.intensidad || 0,
-      latestPainDate: discomforts[0]?.fecha || "",
+      painIntensity: discomforts.slice().reverse()[0]?.intensidad || 0,
+      latestPainDate: discomforts.slice().reverse()[0]?.fecha || "",
     });
 
     setRecentTrainings(trainings.slice(0, 3));

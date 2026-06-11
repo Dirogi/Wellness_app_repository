@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Pressable, Text, TextInput, View } from "react-native";
+import { Alert, Pressable, Text, TextInput, View } from "react-native";
 import AthleteLayout from "../../src/components/layout/AthleteLayout";
 import AppButton from "../../src/components/ui/AppButton";
 import AppCard from "../../src/components/ui/AppCard";
@@ -281,6 +281,28 @@ export default function DailyRegisterScreen() {
     return newRegister.id_registro_diario;
   }
 
+  function parsePositiveNumber(value: string) {
+    const number = Number(value.replace(",", "."));
+
+    return Number.isFinite(number) ? number : null;
+  }
+
+  function isValidHour(hour: string) {
+    const number = Number(hour);
+
+    return Number.isInteger(number) && number >= 0 && number <= 23;
+  }
+
+  function isValidMinute(minute: string) {
+    const number = Number(minute);
+
+    return Number.isInteger(number) && number >= 0 && number <= 59;
+  }
+
+  function cleanText(value: string, maxLength = 500) {
+    return value.trim().slice(0, maxLength);
+  }
+
   async function saveTrainingSection() {
     const idRegistroDiario = await getOrCreateTodayRegister();
 
@@ -291,10 +313,13 @@ export default function DailyRegisterScreen() {
       return;
     }
 
-    const durationNumber = Number(duration);
+    const durationNumber = parsePositiveNumber(duration);
 
-    if (Number.isNaN(durationNumber) || durationNumber <= 0) {
-      console.log("Duración no válida");
+    if (!durationNumber || durationNumber <= 0 || durationNumber > 600) {
+      Alert.alert(
+        "Duración no válida",
+        "Introduce una duración entre 1 y 600 minutos."
+      );
       return;
     }
 
@@ -303,11 +328,11 @@ export default function DailyRegisterScreen() {
       .upsert(
         {
           id_registro_diario: idRegistroDiario,
-          tipo_entrenamiento: trainingType,
+          tipo_entrenamiento: cleanText(trainingType, 80),
           duracion: durationNumber,
           intensidad_percibida: intensity,
           carga_de_entrenamiento: trainingLoad,
-          notas_entrenamiento: trainingNotes || null,
+          notas_entrenamiento: cleanText(trainingNotes) || null,
         },
         {
           onConflict: "id_registro_diario",
@@ -338,6 +363,32 @@ export default function DailyRegisterScreen() {
       return;
     }
 
+    if (
+      !isValidHour(bedHour) ||
+      !isValidMinute(bedMinute) ||
+      !isValidHour(wakeHour) ||
+      !isValidMinute(wakeMinute)
+    ) {
+      Alert.alert(
+        "Horario no válido",
+        "Introduce horas entre 0 y 23 y minutos entre 0 y 59."
+      );
+      return;
+    }
+
+    const wakeupsNumber = wakeups ? parsePositiveNumber(wakeups) : null;
+
+    if (
+      wakeupsNumber !== null &&
+      (!Number.isInteger(wakeupsNumber) || wakeupsNumber < 0 || wakeupsNumber > 20)
+    ) {
+      Alert.alert(
+        "Despertares no válidos",
+        "Introduce un número de despertares entre 0 y 20."
+      );
+      return;
+    }
+
     const horaAcostarse = `${bedHour.padStart(2, "0")}:${bedMinute.padStart(2, "0")}:00`;
     const horaLevantarse = `${wakeHour.padStart(2, "0")}:${wakeMinute.padStart(2, "0")}:00`;
 
@@ -350,8 +401,8 @@ export default function DailyRegisterScreen() {
           hora_acostarse: horaAcostarse,
           hora_levantarse: horaLevantarse,
           horas_de_sueno: Number(calculatedSleepHours),
-          numero_despertares: wakeups ? Number(wakeups) : null,
-          notas_sueno: sleepNotes || null,
+          numero_despertares: wakeupsNumber,
+          notas_sueno: cleanText(sleepNotes) || null,
         },
         {
           onConflict: "id_registro_diario",
@@ -377,6 +428,35 @@ export default function DailyRegisterScreen() {
       return;
     }
 
+    const hrvNumber = parsePositiveNumber(hrv);
+    const restingHrNumber = parsePositiveNumber(restingHr);
+
+    if (!hrvNumber || hrvNumber < 1 || hrvNumber > 300) {
+      Alert.alert("HRV no válido", "Introduce un HRV entre 1 y 300 ms.");
+      return;
+    }
+
+    if (!restingHrNumber || restingHrNumber < 20 || restingHrNumber > 250) {
+      Alert.alert(
+        "FC en reposo no válida",
+        "Introduce una frecuencia cardiaca entre 20 y 250 bpm."
+      );
+      return;
+    }
+
+    if (
+      !isValidHour(hrvHour) ||
+      !isValidMinute(hrvMinute) ||
+      !isValidHour(restingHrHour) ||
+      !isValidMinute(restingHrMinute)
+    ) {
+      Alert.alert(
+        "Horario no válido",
+        "Introduce horas entre 0 y 23 y minutos entre 0 y 59."
+      );
+      return;
+    }
+
     const horaMedicionHrv = `${hrvHour.padStart(2, "0")}:${hrvMinute.padStart(2, "0")}:00`;
     const horaMedicionReposo = `${restingHrHour.padStart(2, "0")}:${restingHrMinute.padStart(2, "0")}:00`;
 
@@ -385,12 +465,12 @@ export default function DailyRegisterScreen() {
       .upsert(
         {
           id_registro_diario: idRegistroDiario,
-          hrv: Number(hrv),
+          hrv: hrvNumber,
           hora_medicion_hrv: horaMedicionHrv,
-          metodo_medicion: measurementMethod || null,
-          fc_reposo: Number(restingHr),
+          metodo_medicion: cleanText(measurementMethod, 80) || null,
+          fc_reposo: restingHrNumber,
           hora_medicion_reposo: horaMedicionReposo,
-          notas_fc: heartNotes || null,
+          notas_fc: cleanText(heartNotes) || null,
         },
         {
           onConflict: "id_registro_diario",
@@ -425,7 +505,7 @@ export default function DailyRegisterScreen() {
           sensacion_recuperacion: recoveryFeeling,
           preparacion_entrenar: readinessToTrain,
           nivel_energia: energyLevel,
-          notas_autopercepcion: selfNotes || null,
+          notas_autopercepcion: cleanText(selfNotes) || null,
         },
         {
           onConflict: "id_registro_diario",
@@ -446,6 +526,14 @@ export default function DailyRegisterScreen() {
 
     if (!idRegistroDiario) return;
 
+    if (hasPain && selectedBodyAreas.length === 0) {
+      Alert.alert(
+        "Zona no indicada",
+        "Selecciona al menos una zona corporal."
+      );
+      return;
+    }
+
     const { data: molestia, error } = await supabase
       .from("molestias")
       .upsert(
@@ -453,8 +541,8 @@ export default function DailyRegisterScreen() {
           id_registro_diario: idRegistroDiario,
           dolor: hasPain,
           intensidad: hasPain ? painIntensity : null,
-          tipo_molestia: hasPain ? discomfortType || null : null,
-          notas_molestias: hasPain ? discomfortNotes || null : null,
+          tipo_molestia: hasPain ? cleanText(discomfortType, 80) || null : null,
+          notas_molestias: hasPain ? cleanText(discomfortNotes) || null : null,
         },
         {
           onConflict: "id_registro_diario",
@@ -518,7 +606,9 @@ export default function DailyRegisterScreen() {
           menstruacion_activa: activeMenstruation,
           sangrado: activeMenstruation ? bleedingLevel : 0,
           dolor_menstrual: activeMenstruation ? menstrualPain : 0,
-          notas_menstruacion: activeMenstruation ? menstrualNotes || null : null,
+          notas_menstruacion: activeMenstruation
+            ? cleanText(menstrualNotes) || null
+            : null,
         },
         {
           onConflict: "id_registro_diario",
@@ -1159,6 +1249,7 @@ function NotesInput({
         onChangeText={onChangeText}
         placeholder={placeholder}
         multiline
+        maxLength={500}
         className="min-h-[90px] bg-white border border-gray-200 rounded-2xl px-4 py-3 text-gray-900"
         placeholderTextColor="#9CA3AF"
         textAlignVertical="top"
