@@ -18,6 +18,8 @@ export default function SuperAdminCities() {
   const [cityName, setCityName] = useState("");
   const [cities, setCities] = useState<CityItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [updatingCityId, setUpdatingCityId] = useState<number | null>(null);
 
   useEffect(() => {
     loadCities();
@@ -42,25 +44,41 @@ export default function SuperAdminCities() {
   }
 
   async function createCity() {
-    if (!cityName.trim()) {
+    if (saving) return;
+
+    const cleanedCityName = cityName.trim();
+
+    if (!cleanedCityName) {
       Alert.alert("Campo vacío", "Introduce el nombre de la ciudad.");
       return;
     }
 
+    if (cleanedCityName.length > 80) {
+      Alert.alert(
+        "Nombre demasiado largo",
+        "El nombre de la ciudad no puede superar los 80 caracteres."
+      );
+      return;
+    }
+
+    setSaving(true);
+
     const { error } = await supabase
       .from("ciudades")
       .insert({
-        nombre_ciudad: cityName.trim(),
+        nombre_ciudad: cleanedCityName,
         active: true,
       });
 
     if (error) {
       Alert.alert("Error", "No se ha podido crear la ciudad.");
+      setSaving(false);
       return;
     }
 
     setCityName("");
     await loadCities();
+    setSaving(false);
   }
 
   async function toggleCityStatus(city: CityItem) {
@@ -75,6 +93,10 @@ export default function SuperAdminCities() {
           text: city.active ? "Desactivar" : "Activar",
           style: city.active ? "destructive" : "default",
           onPress: async () => {
+            if (updatingCityId === city.id_ciudad) return;
+
+            setUpdatingCityId(city.id_ciudad);
+
             const { error } = await supabase
               .from("ciudades")
               .update({
@@ -87,10 +109,13 @@ export default function SuperAdminCities() {
                 "Error",
                 "No se ha podido cambiar el estado de la ciudad."
               );
+
+              setUpdatingCityId(null);
               return;
             }
 
             await loadCities();
+            setUpdatingCityId(null);
           },
         },
       ]
@@ -120,13 +145,15 @@ export default function SuperAdminCities() {
         <AppInput
           label="Nombre de la ciudad"
           value={cityName}
-          onChangeText={setCityName}
+          onChangeText={(value) => setCityName(value.slice(0, 80))}
           placeholder="Ej. Zaragoza"
+          maxLength={80}
         />
 
         <AppButton
-          title="Crear ciudad"
+          title={saving ? "Creando..." : "Crear ciudad"}
           variant="purple"
+          disabled={saving}
           onPress={createCity}
         />
       </AppCard>
@@ -164,10 +191,17 @@ export default function SuperAdminCities() {
               </View>
 
               <AppButton
-                title={city.active ? "Desactivar ciudad" : "Activar ciudad"}
+                title={
+                  updatingCityId === city.id_ciudad
+                    ? "Actualizando..."
+                    : city.active
+                    ? "Desactivar ciudad"
+                    : "Activar ciudad"
+                }
                 variant={city.active ? "danger" : undefined}
+                disabled={updatingCityId === city.id_ciudad}
                 onPress={() => toggleCityStatus(city)}
-                />
+              />
             
             </AppCard>
           ))

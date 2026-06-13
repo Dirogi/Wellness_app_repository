@@ -27,7 +27,10 @@ export default function CoachProfileScreen() {
     const { data: sessionData } = await supabase.auth.getSession();
     const userId = sessionData.session?.user.id;
 
-    if (!userId) return;
+    if (!userId) {
+      Alert.alert("Error", "No se ha podido cargar el perfil.");
+      return;
+    }
 
     setIdUsuario(userId);
 
@@ -72,6 +75,26 @@ export default function CoachProfileScreen() {
 
   async function handleSave() {
     if (!idUsuario) return;
+
+    const normalizedEmail = profile.email.trim().toLowerCase();
+
+    if (!profile.email.trim()) {
+      Alert.alert(
+        "Correo obligatorio",
+        "Introduce un correo electrónico."
+      );
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!emailRegex.test(normalizedEmail)) {
+      Alert.alert(
+        "Correo no válido",
+        "Introduce un correo electrónico válido."
+      );
+      return;
+    }
 
     const { error } = await supabase
       .from("usuarios")
@@ -289,6 +312,9 @@ function ProfileField({
           value={value}
           onChangeText={onChange}
           keyboardType={keyboardType}
+          maxLength={100}
+          autoCapitalize="none"
+          autoCorrect={false}
           className="bg-slate-50 border border-gray-200 rounded-2xl px-4 py-3"
         />
       ) : (

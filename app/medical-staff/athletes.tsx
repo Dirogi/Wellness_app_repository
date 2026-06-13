@@ -16,6 +16,8 @@ export default function MedicalStaffAthletesScreen() {
   const [search, setSearch] = useState("");
   const [athletes, setAthletes] = useState<Athlete[]>([]);
   const [workerId, setWorkerId] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [assigningId, setAssigningId] = useState<number | null>(null);
 
   useEffect(() => {
     loadAthletes();
@@ -31,7 +33,10 @@ export default function MedicalStaffAthletesScreen() {
     const { data: sessionData } = await supabase.auth.getSession();
     const userId = sessionData.session?.user.id;
 
-    if (!userId) return;
+    if (!userId) {
+      setLoading(false);
+      return;
+    }
 
     const { data: currentUser } = await supabase
       .from("usuarios")
@@ -45,7 +50,10 @@ export default function MedicalStaffAthletesScreen() {
       .eq("id_usuario", userId)
       .single();
 
-    if (!currentUser || !worker) return;
+    if (!currentUser || !worker) {
+      setLoading(false);
+      return;
+    }
 
     setWorkerId(worker.id_trabajador);
 
@@ -62,6 +70,7 @@ export default function MedicalStaffAthletesScreen() {
 
     if (athletesError) {
       console.log("Error cargando deportistas:", athletesError.message);
+      setLoading(false);
       return;
     }
 
@@ -70,6 +79,7 @@ export default function MedicalStaffAthletesScreen() {
 
     if (assignmentsError) {
       console.log("Error cargando asignaciones:", assignmentsError.message);
+      setLoading(false);
       return;
     }
 
@@ -100,10 +110,13 @@ export default function MedicalStaffAthletesScreen() {
         }) || [];
 
     setAthletes(formatted);
+    setLoading(false);
   }
 
   async function assignAthlete(idDeportista: number) {
-    if (!workerId) return;
+    if (!workerId || assigningId === idDeportista) return;
+
+    setAssigningId(idDeportista);
 
     const { error } = await supabase.from("asignaciones").insert({
       id_deportista: idDeportista,
@@ -113,6 +126,7 @@ export default function MedicalStaffAthletesScreen() {
 
     if (error) {
       console.log("Error asignando deportista:", error.message);
+      setAssigningId(null);
       return;
     }
 
@@ -124,7 +138,15 @@ export default function MedicalStaffAthletesScreen() {
       )
     );
 
-    console.log("Deportista asignado correctamente al staff médico");
+    setAssigningId(null);
+  }
+
+  if (loading) {
+    return (
+      <MedicalStaffLayout title="Deportistas">
+        <Text className="text-gray-500">Cargando deportistas...</Text>
+      </MedicalStaffLayout>
+    );
   }
 
   return (
@@ -137,8 +159,9 @@ export default function MedicalStaffAthletesScreen() {
 
         <TextInput
           value={search}
-          onChangeText={setSearch}
+          onChangeText={(value) => setSearch(value.slice(0, 80))}
           placeholder="Buscar deportista..."
+          maxLength={80}
           placeholderTextColor="#9CA3AF"
           className="bg-slate-50 border border-gray-200 rounded-2xl px-4 py-3 mb-4"
         />
@@ -168,10 +191,13 @@ export default function MedicalStaffAthletesScreen() {
                 ) : (
                   <Pressable
                     onPress={() => assignAthlete(athlete.id_deportista)}
+                    disabled={assigningId === athlete.id_deportista}
                     className="bg-emerald-100 rounded-full px-4 py-2"
                   >
                     <Text className="text-emerald-700 font-bold">
-                      Asignar
+                      {assigningId === athlete.id_deportista
+                        ? "Asignando..."
+                        : "Asignar"}
                     </Text>
                   </Pressable>
                 )}

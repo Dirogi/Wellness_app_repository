@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Text, View } from "react-native";
 
 import CoachLayout from "../../src/components/layout/CoachLayout";
@@ -31,7 +31,10 @@ export default function CoachDashboard() {
     const { data: sessionData } = await supabase.auth.getSession();
     const userId = sessionData.session?.user.id;
 
-    if (!userId) return;
+    if (!userId) {
+      setLoading(false);
+      return;
+    }
 
    const { data: worker, error: workerError } = await supabase
     .from("trabajadores")
@@ -46,6 +49,7 @@ export default function CoachDashboard() {
 
     if (workerError || !worker) {
       console.log("Error obteniendo entrenador:", workerError?.message);
+      setLoading(false);
       return;
     }
 
@@ -82,6 +86,7 @@ export default function CoachDashboard() {
 
     if (error) {
       console.log("Error cargando dashboard coach:", error.message);
+      setLoading(false);
       return;
     }
 
@@ -90,7 +95,9 @@ export default function CoachDashboard() {
         const deportista = first(item.deportistas);
         const usuario = first(deportista?.usuarios);
 
-        const registros = deportista?.registros_diarios || [];
+        const registros = Array.isArray(deportista?.registros_diarios)
+          ? deportista.registros_diarios
+          : [];
 
         const yesterday = getYesterdayDate();
 
@@ -130,18 +137,18 @@ export default function CoachDashboard() {
   }
 
   const athletesWithDiscomfort = athletes.filter((athlete) => athlete.discomfort);
-  const oneWeekAgo = new Date();
-  oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+  const recentAthletesWithDiscomfort = useMemo(() => {
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
 
-  const recentAthletesWithDiscomfort = athletesWithDiscomfort.filter(
-    (athlete) => {
+    return athletesWithDiscomfort.filter((athlete) => {
       const date = athlete.discomfort?.date;
 
       if (!date) return false;
 
       return new Date(date) >= oneWeekAgo;
-    }
-  );
+    });
+  }, [athletesWithDiscomfort]);
   const trainingLoadAlerts = athletes.filter((athlete) => athlete.load >= 600);
 
   if (loading) {
@@ -154,7 +161,7 @@ export default function CoachDashboard() {
 
   return (
     <CoachLayout title="Dashboard">
-      <Text className="text-black-500 mb-6 text-center">
+      <Text className="text-black mb-6 text-center">
         ¡Bienvenido/a, {coachName}!
       </Text>
 

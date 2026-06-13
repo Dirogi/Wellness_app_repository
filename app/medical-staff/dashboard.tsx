@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Text, View } from "react-native";
 
 import MedicalStaffLayout from "../../src/components/layout/MedicalStaffLayout";
@@ -32,7 +32,10 @@ export default function MedicalStaffDashboard() {
     const { data: sessionData } = await supabase.auth.getSession();
     const userId = sessionData.session?.user.id;
 
-    if (!userId) return;
+    if (!userId) {
+      setLoading(false);
+      return;
+    }
 
     const { data: worker, error: workerError } = await supabase
       .from("trabajadores")
@@ -47,6 +50,7 @@ export default function MedicalStaffDashboard() {
 
     if (workerError || !worker) {
       console.log("Error obteniendo staff médico:", workerError?.message);
+      setLoading(false);
       return;
     }
 
@@ -83,6 +87,7 @@ export default function MedicalStaffDashboard() {
 
     if (error) {
       console.log("Error cargando dashboard staff:", error.message);
+      setLoading(false);
       return;
     }
 
@@ -91,9 +96,11 @@ export default function MedicalStaffDashboard() {
         const deportista = first(item.deportistas);
         const usuario = first(deportista?.usuarios);
 
-        const registros = (deportista?.registros_diarios || []).sort(
-          (a: any, b: any) => b.fecha.localeCompare(a.fecha)
-        );
+        const registros = Array.isArray(deportista?.registros_diarios)
+          ? deportista.registros_diarios.sort(
+              (a: any, b: any) => b.fecha.localeCompare(a.fecha)
+            )
+          : [];
 
         const latestHeart = registros
           .map((registro: any) => first(registro.frecuencias_cardiacas))
@@ -127,19 +134,18 @@ export default function MedicalStaffDashboard() {
     setLoading(false);
   }
 
-  const athletesWithDiscomfort = athletes.filter((athlete) => athlete.discomfort);
-  const oneWeekAgo = new Date();
+  const recentAthletesWithDiscomfort = useMemo(() => {
+    const oneWeekAgo = new Date();
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
 
-    const recentAthletesWithDiscomfort = athletesWithDiscomfort.filter(
-      (athlete) => {
-        const date = athlete.discomfort?.date;
+    return athletes.filter((athlete) => {
+      const date = athlete.discomfort?.date;
 
-        if (!date) return false;
+      if (!date) return false;
 
-        return new Date(date) >= oneWeekAgo;
-    }
-  );
+      return new Date(date) >= oneWeekAgo;
+    });
+  }, [athletes]);
   const hrvAlerts = athletes.filter((athlete) => (athlete.hrv || 0) >= 80);
   const restingHrAlerts = athletes.filter((athlete) => (athlete.restingHr || 0) >= 60);
 
@@ -153,7 +159,7 @@ export default function MedicalStaffDashboard() {
 
   return (
     <MedicalStaffLayout title="Dashboard">
-      <Text className="text-black-500 mb-6 text-center">
+      <Text className="text-black mb-6 text-center">
         ¡Bienvenido/a, {staffName}!
       </Text>
 

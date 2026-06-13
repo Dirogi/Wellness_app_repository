@@ -13,10 +13,29 @@ export default function ActivateAccountScreen() {
   const [passwordCheck, setPasswordCheck] = useState("");
 
   async function handleActivateAccount() {
-    if (!email || !password || !passwordCheck) {
+    const normalizedEmail = email.trim().toLowerCase();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!normalizedEmail || !password || !passwordCheck) {
       Alert.alert(
         "Campos incompletos",
         "Completa todos los campos."
+      );
+      return;
+    }
+
+    if (!emailRegex.test(normalizedEmail)) {
+      Alert.alert(
+        "Correo no válido",
+        "Introduce un correo electrónico válido."
+      );
+      return;
+    }
+
+    if (password.length < 6) {
+      Alert.alert(
+        "Contraseña demasiado corta",
+        "La contraseña debe tener al menos 6 caracteres."
       );
       return;
     }
@@ -28,8 +47,6 @@ export default function ActivateAccountScreen() {
       );
       return;
     }
-
-    const normalizedEmail = email.trim().toLowerCase();
 
     const { data: workerPreUser } = await supabase
       .from("trabajadores_pre_registro")
@@ -191,25 +208,34 @@ export default function ActivateAccountScreen() {
         <AppInput
           label="Correo electrónico"
           value={email}
-          onChangeText={setEmail}
+          onChangeText={(value) => setEmail(value.slice(0, 100))}
           placeholder="correo@ejemplo.com"
           keyboardType="email-address"
+          autoCapitalize="none"
+          autoCorrect={false}
+          maxLength={100}
         />
 
         <AppInput
           label="Nueva contraseña"
           value={password}
-          onChangeText={setPassword}
+          onChangeText={(value) => setPassword(value.slice(0, 100))}
           placeholder="Introduce tu nueva contraseña"
           secureTextEntry
+          autoCapitalize="none"
+          autoCorrect={false}
+          maxLength={100}
         />
 
         <AppInput
           label="Confirmar contraseña"
           value={passwordCheck}
-          onChangeText={setPasswordCheck}
+          onChangeText={(value) => setPasswordCheck(value.slice(0, 100))}
           placeholder="Repite tu contraseña"
           secureTextEntry
+          autoCapitalize="none"
+          autoCorrect={false}
+          maxLength={100}
         />
 
         <AppButton

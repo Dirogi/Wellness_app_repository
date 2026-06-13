@@ -73,10 +73,30 @@ export default function MedicalStaffProfileScreen() {
   async function handleSave() {
     if (!idUsuario) return;
 
+    const normalizedEmail = profile.email.trim().toLowerCase();
+
+    if (!normalizedEmail) {
+      Alert.alert(
+        "Correo obligatorio",
+        "Introduce un correo electrónico."
+      );
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!emailRegex.test(normalizedEmail)) {
+      Alert.alert(
+        "Correo no válido",
+        "Introduce un correo electrónico válido."
+      );
+      return;
+    }
+
     const { error } = await supabase
       .from("usuarios")
       .update({
-        correo_electronico: profile.email,
+        correo_electronico: normalizedEmail,
         updated_at: new Date().toISOString(),
       })
       .eq("id_usuario", idUsuario);
@@ -87,7 +107,6 @@ export default function MedicalStaffProfileScreen() {
     }
 
     setEditing(false);
-    console.log("Perfil staff médico actualizado correctamente");
   }
 
   function updateField(key: string, value: string) {
@@ -145,7 +164,7 @@ export default function MedicalStaffProfileScreen() {
 
               await logout();
             } catch (error) {
-              console.log(error);
+              console.log("Error eliminando cuenta staff médico:", error);
 
               Alert.alert(
                 "Error",
@@ -286,6 +305,9 @@ function ProfileField({
           value={value}
           onChangeText={onChange}
           keyboardType={keyboardType}
+          autoCapitalize={keyboardType === "email-address" ? "none" : "sentences"}
+          autoCorrect={keyboardType !== "email-address"}
+          maxLength={100}
           className="bg-slate-50 border border-gray-200 rounded-2xl px-4 py-3"
         />
       ) : (

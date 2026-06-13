@@ -11,8 +11,19 @@ export default function LoginScreen() {
   const [password, setPassword] = useState("");
 
   async function handleLogin() {
+
+    const normalizedEmail = email.trim().toLowerCase();
+
+    if (!normalizedEmail || !password.trim()) {
+      Alert.alert(
+        "Campos obligatorios",
+        "Introduce correo y contraseña."
+      );
+      return;
+    }
+
     const { data, error } = await supabase.auth.signInWithPassword({
-      email,
+      email: normalizedEmail,
       password,
     });
 
@@ -87,6 +98,9 @@ export default function LoginScreen() {
           onChangeText={setEmail}
           placeholder="correo@ejemplo.com"
           keyboardType="email-address"
+          autoCapitalize="none"
+          autoCorrect={false}
+          maxLength={100}
         />
 
         <AppInput
@@ -95,6 +109,9 @@ export default function LoginScreen() {
           onChangeText={setPassword}
           placeholder="Introduce tu contraseña"
           secureTextEntry
+          autoCapitalize="none"
+          autoCorrect={false}
+          maxLength={100}
         />
 
         <AppButton title="Entrar" onPress={handleLogin} />

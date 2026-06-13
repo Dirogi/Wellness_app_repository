@@ -15,6 +15,7 @@ type AdminData = {
 
 export default function AdminProfile() {
   const [adminData, setAdminData] = useState<AdminData | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadProfile();
@@ -25,7 +26,10 @@ export default function AdminProfile() {
       data: { user },
     } = await supabase.auth.getUser();
 
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
 
     const { data, error } = await supabase
       .from("usuarios")
@@ -38,10 +42,20 @@ export default function AdminProfile() {
 
     if (error || !data) {
       console.log(error?.message);
+      setLoading(false);
       return;
     }
 
     setAdminData(data);
+    setLoading(false);
+  }
+
+  if (loading) {
+    return (
+      <AdminLayout title="Perfil">
+        <Text className="text-gray-500">Cargando perfil...</Text>
+      </AdminLayout>
+    );
   }
 
   return (

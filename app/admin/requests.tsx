@@ -17,6 +17,7 @@ type RequestItem = {
 export default function AdminRequests() {
   const [loading, setLoading] = useState(true);
   const [requests, setRequests] = useState<RequestItem[]>([]);
+  const [updatingRequestId, setUpdatingRequestId] = useState<string | null>(null);
 
   useEffect(() => {
     loadRequests();
@@ -71,15 +72,20 @@ export default function AdminRequests() {
     const formatted =
       data
         ?.filter((user: any) => {
-          const rol = user.roles?.nombre_rol;
+          const rol = first(user.roles)?.nombre_rol;
+
           return rol === "entrenador" || rol === "staff_medico";
         })
-        .map((user: any) => ({
-          id_usuario: user.id_usuario,
-          nombre_apellidos: user.nombre_apellidos,
-          correo_electronico: user.correo_electronico,
-          rol: user.roles?.nombre_rol || "Sin rol",
-        })) || [];
+        .map((user: any) => {
+          const rol = first(user.roles)?.nombre_rol;
+
+          return {
+            id_usuario: user.id_usuario,
+            nombre_apellidos: user.nombre_apellidos || "Usuario",
+            correo_electronico: user.correo_electronico || "-",
+            rol: rol || "Sin rol",
+          };
+        }) || [];
 
     setRequests(formatted);
     setLoading(false);
@@ -94,6 +100,10 @@ export default function AdminRequests() {
         {
           text: "Aprobar",
           onPress: async () => {
+            if (updatingRequestId === idUsuario) return;
+
+            setUpdatingRequestId(idUsuario);
+
             const { error } = await supabase.rpc(
               "admin_cambiar_estado_usuario",
               {
@@ -107,10 +117,14 @@ export default function AdminRequests() {
                 "Error",
                 "No se ha podido aprobar la solicitud."
               );
+
+              setUpdatingRequestId(null);
               return;
             }
 
             await loadRequests();
+
+            setUpdatingRequestId(null);
           },
         },
       ]
@@ -127,6 +141,10 @@ export default function AdminRequests() {
           text: "Rechazar",
           style: "destructive",
           onPress: async () => {
+            if (updatingRequestId === idUsuario) return;
+
+            setUpdatingRequestId(idUsuario);
+
             const { error } = await supabase.rpc(
               "admin_cambiar_estado_usuario",
               {
@@ -140,10 +158,14 @@ export default function AdminRequests() {
                 "Error",
                 "No se ha podido rechazar la solicitud."
               );
+
+              setUpdatingRequestId(null);
               return;
             }
 
             await loadRequests();
+
+            setUpdatingRequestId(null);
           },
         },
       ]
@@ -187,12 +209,14 @@ export default function AdminRequests() {
                     <View className="gap-3">
                         <AppButton
                         title="Aprobar solicitud"
+                        disabled={updatingRequestId === request.id_usuario}
                         onPress={() => approveRequest(request.id_usuario)}
                         />
 
                         <AppButton
                         title="Rechazar solicitud"
                         variant="danger"
+                        disabled={updatingRequestId === request.id_usuario}
                         onPress={() => rejectRequest(request.id_usuario)}
                         />
                     </View>
@@ -207,4 +231,9 @@ export default function AdminRequests() {
         </AppCard>
     </AdminLayout>
   );
+}
+
+function first(value: any) {
+  if (Array.isArray(value)) return value[0];
+  return value;
 }

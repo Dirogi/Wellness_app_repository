@@ -28,6 +28,7 @@ export default function AdminUsers() {
   const [showMedical, setShowMedical] = useState(true);
 
   const [currentUserId, setCurrentUserId] = useState("");
+  const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
 
   useEffect(() => {
     loadUsers();
@@ -84,15 +85,20 @@ export default function AdminUsers() {
     }
 
     const formatted =
-      data?.map((user: any) => ({
-        id_usuario: user.id_usuario,
-        nombre_apellidos: user.nombre_apellidos,
-        correo_electronico: user.correo_electronico,
-        id_estado_cuenta: user.id_estado_cuenta,
-        id_centro: user.id_centro,
-        rol: user.roles?.nombre_rol || "Sin rol",
-        estado: user.estados_cuenta?.nombre_estado || "Sin estado",
-      })) || [];
+      data?.map((user: any) => {
+        const rol = first(user.roles);
+        const estado = first(user.estados_cuenta);
+
+        return {
+          id_usuario: user.id_usuario,
+          nombre_apellidos: user.nombre_apellidos || "Usuario",
+          correo_electronico: user.correo_electronico || "-",
+          id_estado_cuenta: user.id_estado_cuenta,
+          id_centro: user.id_centro,
+          rol: rol?.nombre_rol || "Sin rol",
+          estado: estado?.nombre_estado || "Sin estado",
+        };
+      }) || [];
 
     setUsers(formatted);
     setLoading(false);
@@ -105,9 +111,12 @@ export default function AdminUsers() {
         [
             { text: "Cancelar", style: "cancel" },
             {
-            text: "Bloquear",
-            style: "destructive",
-            onPress: async () => {
+              text: "Bloquear",
+              style: "destructive",
+              onPress: async () => {
+                if (updatingUserId === idUsuario) return;
+                setUpdatingUserId(idUsuario);
+
                 const { error } = await supabase
                 .from("usuarios")
                 .update({
@@ -116,45 +125,58 @@ export default function AdminUsers() {
                 .eq("id_usuario", idUsuario);
 
                 if (error) {
-                Alert.alert("Error", "No se ha podido bloquear el usuario.");
-                return;
+                  Alert.alert("Error", "No se ha podido bloquear el usuario.");
+                  setUpdatingUserId(null);
+                  return;
                 }
 
                 await loadUsers();
-            },
+                setUpdatingUserId(null);
+              },
             },
         ]
         );
     }
 
   async function unblockUser(idUsuario: string) {
-        Alert.alert(
-            "Desbloquear cuenta",
-            "Esta acción volverá a activar la cuenta del usuario. ¿Quieres continuar?",
-            [
-            { text: "Cancelar", style: "cancel" },
-            {
-                text: "Desbloquear",
-                onPress: async () => {
-                const { error } = await supabase.rpc(
-                    "admin_cambiar_estado_usuario",
-                    {
-                        p_id_usuario: idUsuario,
-                        p_id_estado_cuenta: 2,
-                    }
-                    );
+    Alert.alert(
+      "Desbloquear cuenta",
+      "Esta acción volverá a activar la cuenta del usuario. ¿Quieres continuar?",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Desbloquear",
+          onPress: async () => {
+            if (updatingUserId === idUsuario) return;
 
-                if (error) {
-                    Alert.alert("Error", "No se ha podido desbloquear el usuario.");
-                    return;
-                }
+            setUpdatingUserId(idUsuario);
 
-                await loadUsers();
-                },
-            },
-            ]
-        );
-    }
+            const { error } = await supabase.rpc(
+              "admin_cambiar_estado_usuario",
+              {
+                p_id_usuario: idUsuario,
+                p_id_estado_cuenta: 2,
+              }
+            );
+
+            if (error) {
+              Alert.alert(
+                "Error",
+                "No se ha podido desbloquear el usuario."
+              );
+
+              setUpdatingUserId(null);
+              return;
+            }
+
+            await loadUsers();
+
+            setUpdatingUserId(null);
+          },
+        },
+      ]
+    );
+  }
 
   function getStatusStyle(idEstado: number) {
     if (idEstado === 1) {
@@ -220,7 +242,8 @@ export default function AdminUsers() {
       <AppInput
         label="Buscar usuario"
         value={search}
-        onChangeText={setSearch}
+        onChangeText={(value) => setSearch(value.slice(0, 80))}
+        maxLength={80}
         placeholder="Buscar por nombre"
       />
 
@@ -272,7 +295,7 @@ export default function AdminUsers() {
       </View>
 
       <View className="gap-4">
-        {users.length > 0 ? (
+        {filteredUsers.length > 0 ? (
           filteredUsers.map((user) => {
             const statusStyle = getStatusStyle(user.id_estado_cuenta);
             
@@ -309,13 +332,16 @@ export default function AdminUsers() {
                     <AppButton
                       title="Bloquear cuenta"
                       variant="danger"
+                      disabled={updatingUserId === user.id_usuario}
                       onPress={() => blockUser(user.id_usuario)}
                     />
                 )}
 
-                {user.id_estado_cuenta === 3 && (
+                {user.id_estado_cuenta === 3 &&
+                    user.id_usuario !== currentUserId && (
                     <AppButton
                         title="Desbloquear cuenta"
+                        disabled={updatingUserId === user.id_usuario}
                         onPress={() => unblockUser(user.id_usuario)}
                     />
                     )}
@@ -324,10 +350,15 @@ export default function AdminUsers() {
           })
         ) : (
           <Text className="text-gray-500">
-            No hay usuarios registrados.
+            No hay usuarios que coincidan con los filtros.
           </Text>
         )}
       </View>
     </AdminLayout>
   );
+}
+
+function first(value: any) {
+  if (Array.isArray(value)) return value[0];
+  return value;
 }

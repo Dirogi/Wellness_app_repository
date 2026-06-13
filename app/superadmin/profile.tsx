@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Text, View } from "react-native";
 
 import SuperAdminLayout from "../../src/components/layout/SuperAdminLayout";
@@ -7,6 +8,22 @@ import SectionTitle from "../../src/components/ui/SectionTitle";
 import { logout } from "../../src/lib/auth";
 
 export default function SuperAdminProfile() {
+
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  async function handleLogout() {
+  if (loggingOut) return;
+
+  setLoggingOut(true);
+
+  try {
+    await logout();
+  } catch (error) {
+    console.log(error);
+    setLoggingOut(false);
+  }
+}
+
   return (
     <SuperAdminLayout title="Perfil">
       <AppCard>
@@ -22,8 +39,9 @@ export default function SuperAdminProfile() {
         </View>
 
         <AppButton
-          title="Cerrar sesión"
-          onPress={logout}
+          title={loggingOut ? "Cerrando sesión..." : "Cerrar sesión"}
+          disabled={loggingOut}
+          onPress={handleLogout}
         />
       </AppCard>
     </SuperAdminLayout>

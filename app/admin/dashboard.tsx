@@ -66,7 +66,7 @@ export default function AdminDashboard() {
     const users = data || [];
 
     const pendingWorkers = users.filter((user: any) => {
-      const rol = (user.roles as any)?.nombre_rol;
+      const rol = first(user.roles)?.nombre_rol;
 
       return (
         user.id_estado_cuenta === 4 &&
@@ -75,7 +75,7 @@ export default function AdminDashboard() {
     }).length;
 
     const activeWorkers = users.filter((user: any) => {
-      const rol = (user.roles as any)?.nombre_rol;
+      const rol = first(user.roles)?.nombre_rol;
 
       return (
         user.id_estado_cuenta === 2 &&
@@ -84,7 +84,7 @@ export default function AdminDashboard() {
     }).length;
 
     const activeAthletes = users.filter((user: any) => {
-      const rol = (user.roles as any)?.nombre_rol;
+      const rol = first(user.roles)?.nombre_rol;
 
       return (
         user.id_estado_cuenta === 2 &&
@@ -116,7 +116,7 @@ export default function AdminDashboard() {
 
   return (
     <AdminLayout title="Admin. Dashboard">
-      <Text className="text-gray-500 mb-6">
+      <Text className="text-gray-500 mb-6 text-center">
         Panel de administración general de usuarios y cuentas.
       </Text>
 
@@ -185,4 +185,9 @@ export default function AdminDashboard() {
 
     </AdminLayout>
   );
+}
+
+function first(value: any) {
+  if (Array.isArray(value)) return value[0];
+  return value;
 }

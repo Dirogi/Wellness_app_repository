@@ -110,9 +110,17 @@ export default function CoachAthleteDetailScreen() {
   }, [athleteId]);
 
   async function loadAthleteDetail() {
-    if (!athleteId) return;
+    if (!athleteId) {
+      setLoading(false);
+      return;
+    }
 
     const idDeportista = Number(athleteId);
+
+    if (Number.isNaN(idDeportista)) {
+      setLoading(false);
+      return;
+    }
 
     const { data, error } = await supabase
       .from("deportistas")
@@ -153,9 +161,11 @@ export default function CoachAthleteDetailScreen() {
     const usuario = first((data as any).usuarios);
     setAthleteName(usuario?.nombre_apellidos || "Deportista");
 
-    const registros = ((data as any).registros_diarios || []).sort(
-      (a: any, b: any) => b.fecha.localeCompare(a.fecha)
-    );
+    const registros = Array.isArray((data as any).registros_diarios)
+      ? (data as any).registros_diarios.sort(
+          (a: any, b: any) => b.fecha.localeCompare(a.fecha)
+        )
+      : [];
 
     const trainings =
       registros
@@ -1003,11 +1013,6 @@ function formatMinutes(minutes: number) {
 function formatDate(date: string) {
   const [year, month, day] = date.split("-");
   return `${day}/${month}/${year}`;
-}
-
-function shortDate(date: string) {
-  const [, month, day] = date.split("-");
-  return `${day}/${month}`;
 }
 
 function groupLoadByWeek(data: TrainingItem[]) {

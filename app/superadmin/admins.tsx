@@ -8,10 +8,20 @@ import AppInput from "../../src/components/ui/AppInput";
 import SectionTitle from "../../src/components/ui/SectionTitle";
 import { supabase } from "../../src/lib/supabase";
 
+type AdminItem = {
+  id_usuario: string;
+  nombre_apellidos: string;
+  correo_electronico: string;
+  id_estado_cuenta: number;
+  roles?: { nombre_rol: string } | { nombre_rol: string }[];
+  ciudades?: { nombre_ciudad: string } | { nombre_ciudad: string }[];
+  centros?: { nombre_centro: string } | { nombre_centro: string }[];
+};
+
 export default function SuperAdminAdmins() {
   const [loading, setLoading] = useState(true);
 
-  const [admins, setAdmins] = useState<any[]>([]);
+  const [admins, setAdmins] = useState<AdminItem[]>([]);
   const [cities, setCities] = useState<any[]>([]);
   const [centers, setCenters] = useState<any[]>([]);
 
@@ -20,6 +30,8 @@ export default function SuperAdminAdmins() {
   const [email, setEmail] = useState("");
   const [selectedCityId, setSelectedCityId] = useState<number | null>(null);
   const [selectedCenterId, setSelectedCenterId] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [updatingAdminId, setUpdatingAdminId] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
@@ -69,8 +81,10 @@ export default function SuperAdminAdmins() {
     }
 
     setAdmins(
-      adminsData?.filter((user: any) => user.roles?.nombre_rol === "admin") ||
-        []
+      adminsData?.filter((user: any) => {
+        const rol = first(user.roles)?.nombre_rol;
+        return rol === "admin";
+      }) || []
     );
     setCities(citiesData || []);
     setCenters(centersData || []);
@@ -78,49 +92,73 @@ export default function SuperAdminAdmins() {
   }
 
   async function createAdmin() {
-        if (!name || !email || !selectedCityId || !selectedCenterId) {
-            Alert.alert(
-            "Campos incompletos",
-            "Completa todos los campos."
-            );
-            return;
-        }
+    if (saving) return;
 
-        const { error } = await supabase
-            .from("admins_pre_registro")
-            .insert({
-            nombre_apellidos: name.trim(),
-            correo_electronico: email.trim().toLowerCase(),
-            id_ciudad: selectedCityId,
-            id_centro: selectedCenterId,
-            id_estado_cuenta: 1,
-            });
+    const cleanedName = name.trim();
+    const normalizedEmail = email.trim().toLowerCase();
 
-        if (error) {
-            console.log("Error creando preregistro admin:", error.message);
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-            Alert.alert(
-            "Error",
-            "No se ha podido crear el preregistro del admin."
-            );
-
-            return;
-        }
-
-        Alert.alert(
-            "Admin pre-registrado",
-            "El administrador ya puede activar su cuenta desde la pantalla de activación."
-        );
-
-        setName("");
-        setEmail("");
-        setSelectedCityId(null);
-        setSelectedCenterId(null);
-
-        await loadData();
+    if (!cleanedName || !normalizedEmail || !selectedCityId || !selectedCenterId) {
+      Alert.alert(
+        "Campos incompletos",
+        "Completa todos los campos."
+      );
+      return;
     }
 
+    if (!emailRegex.test(normalizedEmail)) {
+      Alert.alert(
+        "Correo no válido",
+        "Introduce un correo electrónico válido."
+      );
+      return;
+    }
+
+    setSaving(true);
+
+    const { error } = await supabase
+      .from("admins_pre_registro")
+      .insert({
+        nombre_apellidos: cleanedName,
+        correo_electronico: normalizedEmail,
+        id_ciudad: selectedCityId,
+        id_centro: selectedCenterId,
+        id_estado_cuenta: 1,
+      });
+
+    if (error) {
+      console.log("Error creando preregistro admin:", error.message);
+
+      Alert.alert(
+        "Error",
+        "No se ha podido crear el preregistro del admin."
+      );
+
+      setSaving(false);
+      return;
+    }
+
+    Alert.alert(
+      "Admin pre-registrado",
+      "El administrador ya puede activar su cuenta desde la pantalla de activación."
+    );
+
+    setName("");
+    setEmail("");
+    setSelectedCityId(null);
+    setSelectedCenterId(null);
+
+    await loadData();
+
+    setSaving(false);
+  }
+
   async function changeAdminStatus(idUsuario: string, estado: number) {
+    if (updatingAdminId === idUsuario) return;
+
+    setUpdatingAdminId(idUsuario);
+
     const { error } = await supabase.rpc("admin_cambiar_estado_usuario", {
       p_id_usuario: idUsuario,
       p_id_estado_cuenta: estado,
@@ -128,10 +166,13 @@ export default function SuperAdminAdmins() {
 
     if (error) {
       Alert.alert("Error", "No se ha podido cambiar el estado del admin.");
+      setUpdatingAdminId(null);
       return;
     }
 
     await loadData();
+
+    setUpdatingAdminId(null);
   }
 
   if (loading) {
@@ -144,7 +185,7 @@ export default function SuperAdminAdmins() {
 
   return (
     <SuperAdminLayout title="Admins">
-      <Text className="text-gray-500 mb-6">
+      <Text className="text-gray-500 mb-6 text-center">
         Crea y gestiona administradores asociados a centros deportivos.
       </Text>
 
@@ -157,16 +198,20 @@ export default function SuperAdminAdmins() {
         <AppInput
           label="Nombre y apellidos"
           value={name}
-          onChangeText={setName}
+          onChangeText={(value) => setName(value.slice(0, 100))}
           placeholder="Ej. Ana Administradora"
+          maxLength={100}
         />
 
         <AppInput
           label="Correo electrónico"
           value={email}
-          onChangeText={setEmail}
+          onChangeText={(value) => setEmail(value.slice(0, 100))}
           placeholder="admin@centro.com"
           keyboardType="email-address"
+          autoCapitalize="none"
+          autoCorrect={false}
+          maxLength={100}
         />
 
         <Text className="font-semibold text-gray-700 mb-2">
@@ -246,7 +291,12 @@ export default function SuperAdminAdmins() {
             )}
         </View>
 
-        <AppButton title="Crear admin" variant="purple" onPress={createAdmin} />
+        <AppButton
+          title={saving ? "Creando..." : "Crear admin"}
+          variant="purple"
+          disabled={saving}
+          onPress={createAdmin}
+        />
       </AppCard>
 
       <View className="gap-4">
@@ -264,11 +314,11 @@ export default function SuperAdminAdmins() {
                   </Text>
 
                   <Text className="text-gray-500 text-sm mt-1">
-                    {admin.centros?.nombre_centro || "Centro no especificado"}
+                    {first(admin.centros)?.nombre_centro || "Centro no especificado"}
                   </Text>
 
                   <Text className="text-gray-500 text-sm mt-1">
-                    {admin.ciudades?.nombre_ciudad || "Ciudad no especificada"}
+                    {first(admin.ciudades)?.nombre_ciudad || "Ciudad no especificada"}
                   </Text>
                 </View>
 
@@ -293,13 +343,23 @@ export default function SuperAdminAdmins() {
 
               {admin.id_estado_cuenta === 2 ? (
                 <AppButton
-                  title="Bloquear admin"
+                  title={
+                    updatingAdminId === admin.id_usuario
+                      ? "Actualizando..."
+                      : "Bloquear admin"
+                  }
                   variant="danger"
+                  disabled={updatingAdminId === admin.id_usuario}
                   onPress={() => changeAdminStatus(admin.id_usuario, 3)}
                 />
               ) : (
                 <AppButton
-                  title="Desbloquear admin"
+                  title={
+                    updatingAdminId === admin.id_usuario
+                      ? "Actualizando..."
+                      : "Desbloquear admin"
+                  }
+                  disabled={updatingAdminId === admin.id_usuario}
                   onPress={() => changeAdminStatus(admin.id_usuario, 2)}
                 />
               )}
@@ -313,4 +373,9 @@ export default function SuperAdminAdmins() {
       </View>
     </SuperAdminLayout>
   );
+}
+
+function first(value: any) {
+  if (Array.isArray(value)) return value[0];
+  return value;
 }

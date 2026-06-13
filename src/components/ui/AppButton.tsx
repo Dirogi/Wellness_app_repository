@@ -4,6 +4,7 @@ type AppButtonProps = {
   title: string;
   onPress: () => void;
   variant?: "primary" | "secondary" | "danger" | "purple" | "outline";
+  disabled?: boolean;
 };
 
 const variants = {
@@ -26,13 +27,23 @@ export default function AppButton({
   title,
   onPress,
   variant = "primary",
+  disabled = false,
 }: AppButtonProps) {
   return (
     <Pressable
       onPress={onPress}
-      className={`h-12 rounded-2xl items-center justify-center active:opacity-80 ${variants[variant]}`}
+      disabled={disabled}
+      className={`h-12 rounded-2xl items-center justify-center ${
+        disabled
+          ? "bg-gray-300"
+          : `${variants[variant]} active:opacity-80`
+      }`}
     >
-      <Text className={`font-semibold text-base ${textVariants[variant]}`}>
+      <Text
+        className={`font-semibold text-base ${
+          disabled ? "text-gray-500" : textVariants[variant]
+        }`}
+      >
         {title}
       </Text>
     </Pressable>

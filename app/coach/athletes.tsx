@@ -16,6 +16,8 @@ export default function CoachAthletesScreen() {
   const [search, setSearch] = useState("");
   const [athletes, setAthletes] = useState<Athlete[]>([]);
   const [workerId, setWorkerId] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [assigningId, setAssigningId] = useState<number | null>(null);
 
   useEffect(() => {
     loadAthletes();
@@ -31,7 +33,10 @@ export default function CoachAthletesScreen() {
     const { data: sessionData } = await supabase.auth.getSession();
     const userId = sessionData.session?.user.id;
 
-    if (!userId) return;
+    if (!userId) {
+      setLoading(false);
+      return;
+    }
 
     const { data: currentUser } = await supabase
       .from("usuarios")
@@ -45,7 +50,10 @@ export default function CoachAthletesScreen() {
       .eq("id_usuario", userId)
       .single();
 
-    if (!currentUser || !worker) return;
+    if (!currentUser || !worker) {
+      setLoading(false);
+      return;
+    }
 
     setWorkerId(worker.id_trabajador);
 
@@ -62,6 +70,7 @@ export default function CoachAthletesScreen() {
 
     if (athletesError) {
       console.log("Error cargando deportistas:", athletesError.message);
+      setLoading(false);
       return;
     }
 
@@ -70,6 +79,7 @@ export default function CoachAthletesScreen() {
 
     if (assignmentsError) {
       console.log("Error cargando asignaciones:", assignmentsError.message);
+      setLoading(false);
       return;
     }
 
@@ -100,10 +110,13 @@ export default function CoachAthletesScreen() {
         }) || [];
 
     setAthletes(formatted);
+    setLoading(false);
   }
 
   async function assignAthlete(idDeportista: number) {
-    if (!workerId) return;
+    if (!workerId || assigningId === idDeportista) return;
+
+    setAssigningId(idDeportista);
 
     const { error } = await supabase.from("asignaciones").insert({
       id_deportista: idDeportista,
@@ -113,6 +126,7 @@ export default function CoachAthletesScreen() {
 
     if (error) {
       console.log("Error asignando deportista:", error.message);
+      setAssigningId(null);
       return;
     }
 
@@ -124,7 +138,16 @@ export default function CoachAthletesScreen() {
       )
     );
 
+    setAssigningId(null);
     console.log("Deportista asignado correctamente");
+  }
+
+  if (loading) {
+    return (
+      <CoachLayout title="Deportistas">
+        <Text className="text-gray-500">Cargando deportistas...</Text>
+      </CoachLayout>
+    );
   }
 
   return (
@@ -137,7 +160,8 @@ export default function CoachAthletesScreen() {
 
         <TextInput
           value={search}
-          onChangeText={setSearch}
+          onChangeText={(value) => setSearch(value.slice(0, 80))}
+          maxLength={80}
           placeholder="Buscar deportista..."
           placeholderTextColor="#9CA3AF"
           className="bg-slate-50 border border-gray-200 rounded-2xl px-4 py-3 mb-4"
@@ -168,10 +192,13 @@ export default function CoachAthletesScreen() {
                 ) : (
                   <Pressable
                     onPress={() => assignAthlete(athlete.id_deportista)}
+                    disabled={assigningId === athlete.id_deportista}
                     className="bg-emerald-100 rounded-full px-4 py-2"
                   >
                     <Text className="text-emerald-700 font-bold">
-                      Asignar
+                      {assigningId === athlete.id_deportista
+                        ? "Asignando..."
+                        : "Asignar"}
                     </Text>
                   </Pressable>
                 )}

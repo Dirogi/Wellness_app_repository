@@ -17,6 +17,8 @@ export default function AssignedAthletesScreen() {
   const [isUnassignMode, setIsUnassignMode] = useState(false);
   const [athletes, setAthletes] = useState<AssignedAthlete[]>([]);
   const [loading, setLoading] = useState(true);
+  const [unassigningId, setUnassigningId] = useState<number | null>(null);
+  const [hasUnassignedChanges, setHasUnassignedChanges] = useState(false);
 
   useEffect(() => {
     loadAssignedAthletes();
@@ -26,7 +28,10 @@ export default function AssignedAthletesScreen() {
     const { data: sessionData } = await supabase.auth.getSession();
     const userId = sessionData.session?.user.id;
 
-    if (!userId) return;
+    if (!userId) {
+      setLoading(false);
+      return;
+    }
 
     const { data: worker, error: workerError } = await supabase
       .from("trabajadores")
@@ -36,6 +41,7 @@ export default function AssignedAthletesScreen() {
 
     if (workerError || !worker) {
       console.log("Error obteniendo entrenador:", workerError?.message);
+      setLoading(false);
       return;
     }
 
@@ -57,6 +63,7 @@ export default function AssignedAthletesScreen() {
 
     if (error) {
       console.log("Error cargando deportistas asignados:", error.message);
+      setLoading(false);
       return;
     }
 
@@ -93,6 +100,9 @@ export default function AssignedAthletesScreen() {
   }
 
   async function unassignAthlete(idAsignacion: number) {
+    if (unassigningId === idAsignacion) return;
+    setUnassigningId(idAsignacion);
+
     const { error } = await supabase
       .from("asignaciones")
       .update({ active: false })
@@ -100,12 +110,17 @@ export default function AssignedAthletesScreen() {
 
     if (error) {
       console.log("Error desasignando deportista:", error.message);
+      setUnassigningId(null);
       return;
     }
 
     setAthletes((prev) =>
       prev.filter((athlete) => athlete.id_asignacion !== idAsignacion)
     );
+
+    setHasUnassignedChanges(true);
+
+    setUnassigningId(null);
 
     console.log("Deportista desasignado correctamente");
   }
@@ -118,6 +133,7 @@ export default function AssignedAthletesScreen() {
     );
   }
 
+
   return (
     <CoachLayout title="Deportistas asignados">
       <AppCard>
@@ -127,7 +143,10 @@ export default function AssignedAthletesScreen() {
           </Text>
 
           <Pressable
-            onPress={() => setIsUnassignMode(!isUnassignMode)}
+            onPress={() => {
+              setIsUnassignMode(!isUnassignMode);
+              setHasUnassignedChanges(false);
+            }}
             className={`px-4 py-2 rounded-full ${
               isUnassignMode ? "bg-gray-200" : "bg-red-100"
             }`}
@@ -137,7 +156,11 @@ export default function AssignedAthletesScreen() {
                 isUnassignMode ? "text-gray-700" : "text-red-600"
               }`}
             >
-              {isUnassignMode ? "Cancelar" : "Desasignar"}
+              {isUnassignMode
+                ? hasUnassignedChanges
+                  ? "Finalizar"
+                  : "Cancelar"
+                : "Desasignar"}
             </Text>
           </Pressable>
         </View>
@@ -157,6 +180,7 @@ export default function AssignedAthletesScreen() {
                 {isUnassignMode && (
                   <Pressable
                     onPress={() => unassignAthlete(athlete.id_asignacion)}
+                    disabled={unassigningId === athlete.id_asignacion}
                     className="w-8 h-8 rounded-full bg-red-100 items-center justify-center"
                   >
                     <Text className="text-red-600 font-bold">✕</Text>

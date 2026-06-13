@@ -94,9 +94,17 @@ function fillWeeklyHeartData(data: HeartItem[]) {
   }, [athleteId]);
 
   async function loadAthleteDetail() {
-    if (!athleteId) return;
+    if (!athleteId) {
+      setLoading(false);
+      return;
+    }
 
     const idDeportista = Number(athleteId);
+
+    if (Number.isNaN(idDeportista)) {
+      setLoading(false);
+      return;
+    }
 
     const { data, error } = await supabase
       .from("deportistas")
@@ -135,9 +143,11 @@ function fillWeeklyHeartData(data: HeartItem[]) {
     const usuario = first((data as any).usuarios);
     setAthleteName(usuario?.nombre_apellidos || "Deportista");
 
-    const registros = ((data as any).registros_diarios || []).sort(
-      (a: any, b: any) => b.fecha.localeCompare(a.fecha)
-    );
+    const registros = Array.isArray((data as any).registros_diarios)
+      ? (data as any).registros_diarios.sort(
+          (a: any, b: any) => b.fecha.localeCompare(a.fecha)
+        )
+      : [];
 
     const hearts =
       registros
@@ -637,57 +647,6 @@ function TabButton({
   );
 }
 
-function SimpleLineChart({
-  data,
-  maxValue,
-  color,
-  unit,
-}: {
-  data: { label: string; value: number }[];
-  maxValue: number;
-  color: "blue" | "red";
-  unit: string;
-}) {
-  if (data.length === 0) {
-    return (
-      <View className="h-48 bg-slate-50 rounded-2xl p-4 items-center justify-center">
-        <Text className="text-gray-500">Sin datos suficientes</Text>
-      </View>
-    );
-  }
-
-  const colorClass = color === "blue" ? "bg-blue-500" : "bg-red-500";
-
-  return (
-    <View className="h-48 bg-slate-50 rounded-2xl p-4">
-      <View className="flex-row items-end justify-between h-32">
-        {data.map((item, index) => {
-          const height = (item.value / maxValue) * 120;
-
-          return (
-            <View key={`${item.label}-${index}`} className="items-center flex-1">
-              <View
-                className={`w-3 h-3 rounded-full ${colorClass}`}
-                style={{ marginBottom: height }}
-              />
-
-              <Text className="text-[10px] text-gray-400 mt-2">
-                {item.label}
-              </Text>
-            </View>
-          );
-        })}
-      </View>
-
-      <View className="flex-row justify-between mt-3">
-        <Text className="text-xs text-gray-400">0 {unit}</Text>
-        <Text className="text-xs text-gray-400">
-          {maxValue} {unit}
-        </Text>
-      </View>
-    </View>
-  );
-}
 
 function first(value: any) {
   if (Array.isArray(value)) return value[0];
@@ -706,10 +665,6 @@ function formatDate(date: string) {
   return `${day}/${month}/${year}`;
 }
 
-function shortDate(date: string) {
-  const [, month, day] = date.split("-");
-  return `${day}/${month}`;
-}
 
 function getIntensityColor(intensity: number) {
   if (intensity <= 4) {

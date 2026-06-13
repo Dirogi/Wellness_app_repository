@@ -54,7 +54,7 @@ export default function SuperAdminDashboard() {
 
     const admins =
       usersData?.filter((user: any) => {
-        const rol = user.roles?.nombre_rol;
+        const rol = first(user.roles)?.nombre_rol;
         return rol === "admin";
       }) || [];
 
@@ -119,4 +119,9 @@ export default function SuperAdminDashboard() {
       </View>
     </SuperAdminLayout>
   );
+}
+
+function first(value: any) {
+  if (Array.isArray(value)) return value[0];
+  return value;
 }

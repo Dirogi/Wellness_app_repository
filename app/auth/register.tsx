@@ -1,6 +1,6 @@
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { Alert, Pressable, ScrollView, Text, View } from "react-native";
 import AppButton from "../../src/components/ui/AppButton";
 import AppInput from "../../src/components/ui/AppInput";
 import SectionTitle from "../../src/components/ui/SectionTitle";
@@ -76,28 +76,61 @@ export default function RegisterScreen() {
   }, [selectedCiudad]);
 
   async function handleRegister() {
-    if (!selectedCiudad || !selectedCentro) {
-      console.log("Debes seleccionar ciudad y centro");
+    const normalizedEmail = email.trim().toLowerCase();
+    const cleanedName = fullName.trim();
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!cleanedName || !normalizedEmail || !password || !passwordCheck) {
+      Alert.alert(
+        "Campos obligatorios",
+        "Completa nombre, correo y contraseña."
+      );
       return;
     }
 
-    if (!email || !password || !fullName) {
-      console.log("Faltan campos obligatorios");
+    if (!emailRegex.test(normalizedEmail)) {
+      Alert.alert(
+        "Correo no válido",
+        "Introduce un correo electrónico válido."
+      );
+      return;
+    }
+
+    if (!selectedCiudad || !selectedCentro) {
+      Alert.alert(
+        "Centro obligatorio",
+        "Selecciona tu ciudad y centro."
+      );
+      return;
+    }
+
+    if (password.length < 6) {
+      Alert.alert(
+        "Contraseña demasiado corta",
+        "La contraseña debe tener al menos 6 caracteres."
+      );
       return;
     }
 
     if (password !== passwordCheck) {
-      console.log("Las contraseñas no coinciden");
+      Alert.alert(
+        "Contraseñas distintas",
+        "Las contraseñas no coinciden."
+      );
       return;
     }
 
     const { data: authData, error: authError } = await supabase.auth.signUp({
-      email,
+      email: normalizedEmail,
       password,
     });
 
     if (authError || !authData.user) {
-      console.log("Error registro:", authError?.message);
+      Alert.alert(
+        "Error de registro",
+        "No se ha podido crear la cuenta."
+      );
       return;
     }
 
@@ -113,18 +146,29 @@ export default function RegisterScreen() {
       .eq("nombre_estado", "activa")
       .single();
 
+    if (!rol || !estado) {
+      Alert.alert(
+        "Error",
+        "No se ha podido completar el registro."
+      );
+      return;
+    }
+
     const { error: userError } = await supabase.from("usuarios").insert({
       id_usuario: authData.user.id,
-      nombre_apellidos: fullName,
-      correo_electronico: email,
-      id_rol: rol?.id_rol,
-      id_estado_cuenta: estado?.id_estado_cuenta,
+      nombre_apellidos: cleanedName,
+      correo_electronico: normalizedEmail,
+      id_rol: rol.id_rol,
+      id_estado_cuenta: estado.id_estado_cuenta,
       id_ciudad: selectedCiudad.id_ciudad,
       id_centro: selectedCentro.id_centro,
     });
 
     if (userError) {
-      console.log("Error usuario:", userError.message);
+      Alert.alert(
+        "Error",
+        "No se ha podido guardar el usuario."
+      );
       return;
     }
 
@@ -133,7 +177,10 @@ export default function RegisterScreen() {
     });
 
     if (athleteError) {
-      console.log("Error deportista:", athleteError.message);
+      Alert.alert(
+        "Error",
+        "No se ha podido crear el perfil de deportista."
+      );
       return;
     }
 
@@ -167,16 +214,20 @@ export default function RegisterScreen() {
         <AppInput
           label="Nombre y apellidos"
           value={fullName}
-          onChangeText={setFullName}
+          onChangeText={(value) => setFullName(value.slice(0, 100))}
           placeholder="Introduce tu nombre completo"
+          maxLength={100}
         />
 
         <AppInput
           label="Correo electrónico"
           value={email}
-          onChangeText={setEmail}
+          onChangeText={(value) => setEmail(value.slice(0, 100))}
           placeholder="correo@ejemplo.com"
           keyboardType="email-address"
+          autoCapitalize="none"
+          autoCorrect={false}
+          maxLength={100}
         />
 
         <SelectBox
@@ -217,17 +268,23 @@ export default function RegisterScreen() {
         <AppInput
           label="Contraseña"
           value={password}
-          onChangeText={setPassword}
+          onChangeText={(value) => setPassword(value.slice(0, 100))}
           placeholder="Introduce tu contraseña"
           secureTextEntry
+          autoCapitalize="none"
+          autoCorrect={false}
+          maxLength={100}
         />
 
         <AppInput
           label="Confirmar contraseña"
           value={passwordCheck}
-          onChangeText={setPasswordCheck}
+          onChangeText={(value) => setPasswordCheck(value.slice(0, 100))}
           placeholder="Repite tu contraseña"
           secureTextEntry
+          autoCapitalize="none"
+          autoCorrect={false}
+          maxLength={100}
         />
 
         <AppButton

@@ -457,6 +457,8 @@ function ProfileField({
           value={value}
           onChangeText={onChange}
           keyboardType={keyboardType}
+          autoCapitalize={keyboardType === "email-address" ? "none" : "sentences"}
+          autoCorrect={keyboardType !== "email-address"}
           maxLength={100}
           className="bg-slate-50 border border-gray-200 rounded-2xl px-4 py-3"
         />

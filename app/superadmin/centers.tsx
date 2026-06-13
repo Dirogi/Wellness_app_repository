@@ -19,18 +19,24 @@ type CenterItem = {
   nombre_centro: string;
   id_ciudad: number;
   active: boolean;
-  ciudades?: {
-    nombre_ciudad: string;
-  };
+  ciudades?:
+    | {
+        nombre_ciudad: string;
+      }
+    | {
+        nombre_ciudad: string;
+      }[];
 };
 
 export default function SuperAdminCenters() {
   const [loading, setLoading] = useState(true);
   const [cities, setCities] = useState<CityItem[]>([]);
-  const [centers, setCenters] = useState<any[]>([]);
+  const [centers, setCenters] = useState<CenterItem[]>([]);
 
   const [centerName, setCenterName] = useState("");
   const [selectedCityId, setSelectedCityId] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [updatingCenterId, setUpdatingCenterId] = useState<number | null>(null);
 
   useEffect(() => {
     loadData();
@@ -68,12 +74,16 @@ export default function SuperAdminCenters() {
     }
 
     setCities(citiesData || []);
-   setCenters(centersData || []);
+    setCenters(centersData || []);
     setLoading(false);
   }
 
   async function createCenter() {
-    if (!centerName.trim() || !selectedCityId) {
+    if (saving) return;
+
+    const cleanedCenterName = centerName.trim();
+
+    if (!cleanedCenterName || !selectedCityId) {
       Alert.alert(
         "Campos incompletos",
         "Introduce el nombre del centro y selecciona una ciudad."
@@ -81,22 +91,34 @@ export default function SuperAdminCenters() {
       return;
     }
 
+    if (cleanedCenterName.length > 100) {
+      Alert.alert(
+        "Nombre demasiado largo",
+        "El nombre del centro no puede superar los 100 caracteres."
+      );
+      return;
+    }
+
+    setSaving(true);
+
     const { error } = await supabase
       .from("centros")
       .insert({
-        nombre_centro: centerName.trim(),
+        nombre_centro: cleanedCenterName,
         id_ciudad: selectedCityId,
         active: true,
       });
 
     if (error) {
       Alert.alert("Error", "No se ha podido crear el centro.");
+      setSaving(false);
       return;
     }
 
     setCenterName("");
     setSelectedCityId(null);
     await loadData();
+    setSaving(false);
   }
 
   async function toggleCenterStatus(center: CenterItem) {
@@ -111,6 +133,10 @@ export default function SuperAdminCenters() {
           text: center.active ? "Desactivar" : "Activar",
           style: center.active ? "destructive" : "default",
           onPress: async () => {
+            if (updatingCenterId === center.id_centro) return;
+
+            setUpdatingCenterId(center.id_centro);
+
             const { error } = await supabase
               .from("centros")
               .update({
@@ -123,10 +149,13 @@ export default function SuperAdminCenters() {
                 "Error",
                 "No se ha podido cambiar el estado del centro."
               );
+
+              setUpdatingCenterId(null);
               return;
             }
 
             await loadData();
+            setUpdatingCenterId(null);
           },
         },
       ]
@@ -143,7 +172,7 @@ export default function SuperAdminCenters() {
 
   return (
     <SuperAdminLayout title="Centros">
-      <Text className="text-gray-500 mb-6">
+      <Text className="text-gray-500 mb-6 text-center">
         Gestiona los centros deportivos disponibles en cada ciudad.
       </Text>
 
@@ -156,8 +185,9 @@ export default function SuperAdminCenters() {
         <AppInput
           label="Nombre del centro"
           value={centerName}
-          onChangeText={setCenterName}
+          onChangeText={(value) => setCenterName(value.slice(0, 100))}
           placeholder="Ej. Centro Alto Rendimiento Zaragoza"
+          maxLength={100}
         />
 
         <Text className="text-gray-700 font-semibold mb-2">
@@ -195,8 +225,9 @@ export default function SuperAdminCenters() {
         </View>
 
         <AppButton
-          title="Crear centro"
+          title={saving ? "Creando..." : "Crear centro"}
           variant="purple"
+          disabled={saving}
           onPress={createCenter}
         />
       </AppCard>
@@ -212,7 +243,7 @@ export default function SuperAdminCenters() {
                   </Text>
 
                   <Text className="text-gray-500 text-sm mt-1">
-                    {center.ciudades?.nombre_ciudad || "Ciudad no especificada"}
+                    {first(center.ciudades)?.nombre_ciudad || "Ciudad no especificada"}
                   </Text>
 
                   <Text className="text-gray-500 text-sm mt-1">
@@ -238,8 +269,15 @@ export default function SuperAdminCenters() {
               </View>
 
               <AppButton
-                title={center.active ? "Desactivar centro" : "Activar centro"}
+                title={
+                  updatingCenterId === center.id_centro
+                    ? "Actualizando..."
+                    : center.active
+                    ? "Desactivar centro"
+                    : "Activar centro"
+                }
                 variant={center.active ? "danger" : undefined}
+                disabled={updatingCenterId === center.id_centro}
                 onPress={() => toggleCenterStatus(center)}
               />
             </AppCard>
@@ -252,4 +290,9 @@ export default function SuperAdminCenters() {
       </View>
     </SuperAdminLayout>
   );
+}
+
+function first(value: any) {
+  if (Array.isArray(value)) return value[0];
+  return value;
 }

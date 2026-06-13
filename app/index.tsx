@@ -32,7 +32,11 @@ export default function Index() {
       return;
     }
 
-    const rol = (usuario.roles as any)?.nombre_rol;
+    const roleData = Array.isArray(usuario.roles)
+      ? usuario.roles[0]
+      : usuario.roles;
+
+    const rol = roleData?.nombre_rol;
 
     if (rol === "deportista") {
       router.replace("/athlete/dashboard");
@@ -42,6 +46,8 @@ export default function Index() {
       router.replace("/medical-staff/dashboard");
     } else if (rol === "admin") {
       router.replace("/admin/dashboard");
+    } else if (rol === "superadmin") {
+      router.replace("/superadmin/dashboard");
     } else {
       router.replace("/auth/login");
     }

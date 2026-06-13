@@ -20,6 +20,7 @@ export default function PreRegisterWorker() {
   const [selectedRole, setSelectedRole] = useState<"entrenador" | "staff_medico">(
     "entrenador"
   );
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     loadAdminData();
@@ -47,17 +48,38 @@ export default function PreRegisterWorker() {
   }
 
   async function handlePreRegister() {
-    if (!adminData) {
-      Alert.alert("Error", "No se han podido obtener los datos del administrador.");
-      return;
-    }
+    if (saving) return;
 
-    if (!name || !email) {
-      Alert.alert("Campos incompletos", "Introduce nombre y correo electrónico.");
-      return;
-    }
-
+    const cleanedName = name.trim();
     const normalizedEmail = email.trim().toLowerCase();
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!adminData) {
+      Alert.alert(
+        "Error",
+        "No se han podido obtener los datos del administrador."
+      );
+      return;
+    }
+
+    if (!cleanedName || !normalizedEmail) {
+      Alert.alert(
+        "Campos incompletos",
+        "Introduce nombre y correo electrónico."
+      );
+      return;
+    }
+
+    if (!emailRegex.test(normalizedEmail)) {
+      Alert.alert(
+        "Correo no válido",
+        "Introduce un correo electrónico válido."
+      );
+      return;
+    }
+
+    setSaving(true);
 
     const { data: roleData, error: roleError } = await supabase
       .from("roles")
@@ -66,14 +88,18 @@ export default function PreRegisterWorker() {
       .single();
 
     if (roleError || !roleData) {
-      Alert.alert("Error", "No se ha podido obtener el rol seleccionado.");
+      Alert.alert(
+        "Error",
+        "No se ha podido obtener el rol seleccionado."
+      );
+      setSaving(false);
       return;
     }
 
     const { error } = await supabase
       .from("trabajadores_pre_registro")
       .insert({
-        nombre_apellidos: name.trim(),
+        nombre_apellidos: cleanedName,
         correo_electronico: normalizedEmail,
         id_rol: roleData.id_rol,
         id_ciudad: adminData.id_ciudad,
@@ -82,10 +108,14 @@ export default function PreRegisterWorker() {
       });
 
     if (error) {
+      console.log("Error pre-registro:", error.message);
+
       Alert.alert(
         "Error",
-        "No se ha podido pre-registrar el trabajador. Comprueba que el correo no exista ya."
+        error.message
       );
+
+      setSaving(false);
       return;
     }
 
@@ -97,6 +127,7 @@ export default function PreRegisterWorker() {
     setName("");
     setEmail("");
     setSelectedRole("entrenador");
+    setSaving(false);
   }
 
   return (
@@ -114,16 +145,20 @@ export default function PreRegisterWorker() {
         <AppInput
           label="Nombre y apellidos"
           value={name}
-          onChangeText={setName}
-          placeholder="Ej. Roberto García"
+          onChangeText={(value) => setName(value.slice(0, 100))}
+          placeholder="Ej. Diego Gastón"
+          maxLength={100}
         />
 
         <AppInput
           label="Correo electrónico"
           value={email}
-          onChangeText={setEmail}
+          onChangeText={(value) => setEmail(value.slice(0, 100))}
           placeholder="correo@ejemplo.com"
           keyboardType="email-address"
+          autoCapitalize="none"
+          autoCorrect={false}
+          maxLength={100}
         />
 
         <Text className="text-gray-700 font-semibold mb-2">
@@ -171,7 +206,8 @@ export default function PreRegisterWorker() {
         </View>
 
         <AppButton
-          title="Pre-registrar trabajador"
+          title={saving ? "Pre-registrando..." : "Pre-registrar trabajador"}
+          disabled={saving}
           onPress={handlePreRegister}
         />
       </AppCard>
