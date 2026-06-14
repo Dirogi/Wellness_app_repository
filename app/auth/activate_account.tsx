@@ -1,4 +1,5 @@
 import { router } from "expo-router";
+import { StatusBar } from "expo-status-bar";
 import { useState } from "react";
 import { Alert, Pressable, ScrollView, Text, View } from "react-native";
 import { supabase } from "../../src/lib/supabase";
@@ -182,76 +183,79 @@ export default function ActivateAccountScreen() {
   }
 
   return (
-    <ScrollView
-      className="flex-1 bg-slate-50"
-      contentContainerStyle={{
-        paddingHorizontal: 24,
-        paddingTop: 90,
-        paddingBottom: 40,
-      }}
-      showsVerticalScrollIndicator={false}
-    >
-      <Text className="text-4xl font-bold text-blue-600 text-center mb-2">
-        Wellness App
-      </Text>
+    <>
+      <StatusBar style="dark" />
+      <ScrollView
+        className="flex-1 bg-slate-50"
+        contentContainerStyle={{
+          paddingHorizontal: 24,
+          paddingTop: 90,
+          paddingBottom: 40,
+        }}
+        showsVerticalScrollIndicator={false}
+      >
+        <Text className="text-4xl font-bold text-blue-600 text-center mb-2">
+          Wellness App
+        </Text>
 
-      <Text className="text-gray-500 text-center mb-10">
-        Activación de cuenta de trabajador o admin
-      </Text>
+        <Text className="text-gray-500 text-center mb-10">
+          Activación de cuenta de trabajador o admin
+        </Text>
 
-      <View className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
-        <SectionTitle
-          title="Activar cuenta"
-          subtitle="Crea tu contraseña para acceder a la aplicación"
-        />
+        <View className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
+          <SectionTitle
+            title="Activar cuenta"
+            subtitle="Crea tu contraseña para acceder a la aplicación"
+          />
 
-        <AppInput
-          label="Correo electrónico"
-          value={email}
-          onChangeText={(value) => setEmail(value.slice(0, 100))}
-          placeholder="correo@ejemplo.com"
-          keyboardType="email-address"
-          autoCapitalize="none"
-          autoCorrect={false}
-          maxLength={100}
-        />
+          <AppInput
+            label="Correo electrónico"
+            value={email}
+            onChangeText={(value) => setEmail(value.slice(0, 100))}
+            placeholder="correo@ejemplo.com"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+            maxLength={100}
+          />
 
-        <AppInput
-          label="Nueva contraseña"
-          value={password}
-          onChangeText={(value) => setPassword(value.slice(0, 100))}
-          placeholder="Introduce tu nueva contraseña"
-          secureTextEntry
-          autoCapitalize="none"
-          autoCorrect={false}
-          maxLength={100}
-        />
+          <AppInput
+            label="Nueva contraseña"
+            value={password}
+            onChangeText={(value) => setPassword(value.slice(0, 100))}
+            placeholder="Introduce tu nueva contraseña"
+            secureTextEntry
+            autoCapitalize="none"
+            autoCorrect={false}
+            maxLength={100}
+          />
 
-        <AppInput
-          label="Confirmar contraseña"
-          value={passwordCheck}
-          onChangeText={(value) => setPasswordCheck(value.slice(0, 100))}
-          placeholder="Repite tu contraseña"
-          secureTextEntry
-          autoCapitalize="none"
-          autoCorrect={false}
-          maxLength={100}
-        />
+          <AppInput
+            label="Confirmar contraseña"
+            value={passwordCheck}
+            onChangeText={(value) => setPasswordCheck(value.slice(0, 100))}
+            placeholder="Repite tu contraseña"
+            secureTextEntry
+            autoCapitalize="none"
+            autoCorrect={false}
+            maxLength={100}
+          />
 
-        <AppButton
-          title="Activar cuenta"
-          onPress={handleActivateAccount}
-        />
+          <AppButton
+            title="Activar cuenta"
+            onPress={handleActivateAccount}
+          />
 
-        <Pressable onPress={() => router.push("/auth/login")}>
-          <Text className="text-center text-sm text-gray-500 mt-5">
-            ¿Ya tienes tu cuenta activa?{" "}
-            <Text className="text-blue-600 font-semibold">
-              Inicia sesión
+          <Pressable onPress={() => router.push("/auth/login")}>
+            <Text className="text-center text-sm text-gray-500 mt-5">
+              ¿Ya tienes tu cuenta activa?{" "}
+              <Text className="text-blue-600 font-semibold">
+                Inicia sesión
+              </Text>
             </Text>
-          </Text>
-        </Pressable>
-      </View>
-    </ScrollView>
+          </Pressable>
+        </View>
+      </ScrollView>
+    </>
   );
 }

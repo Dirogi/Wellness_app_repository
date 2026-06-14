@@ -1,4 +1,5 @@
 import { router } from "expo-router";
+import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
 import { Alert, Pressable, ScrollView, Text, View } from "react-native";
 import AppButton from "../../src/components/ui/AppButton";
@@ -188,118 +189,121 @@ export default function RegisterScreen() {
   }
 
   return (
-    <ScrollView
-      className="flex-1 bg-slate-50"
-      contentContainerStyle={{
-        paddingHorizontal: 24,
-        paddingTop: 90,
-        paddingBottom: 40,
-      }}
-      showsVerticalScrollIndicator={false}
-    >
-      <Text className="text-4xl font-bold text-blue-600 text-center mb-2">
-        Wellness App
-      </Text>
+    <>
+      <StatusBar style="dark" />
+      <ScrollView
+        className="flex-1 bg-slate-50"
+        contentContainerStyle={{
+          paddingHorizontal: 24,
+          paddingTop: 90,
+          paddingBottom: 40,
+        }}
+        showsVerticalScrollIndicator={false}
+      >
+        <Text className="text-4xl font-bold text-blue-600 text-center mb-2">
+          Wellness App
+        </Text>
 
-      <Text className="text-gray-500 text-center mb-10">
-        Monitoriza tu bienestar y rendimiento
-      </Text>
+        <Text className="text-gray-500 text-center mb-10">
+          Monitoriza tu bienestar y rendimiento
+        </Text>
 
-      <View className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
-        <SectionTitle
-          title="Crear cuenta"
-          subtitle="Regístrate como deportista"
-        />
+        <View className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
+          <SectionTitle
+            title="Crear cuenta"
+            subtitle="Regístrate como deportista"
+          />
 
-        <AppInput
-          label="Nombre y apellidos"
-          value={fullName}
-          onChangeText={(value) => setFullName(value.slice(0, 100))}
-          placeholder="Introduce tu nombre completo"
-          maxLength={100}
-        />
+          <AppInput
+            label="Nombre y apellidos"
+            value={fullName}
+            onChangeText={(value) => setFullName(value.slice(0, 100))}
+            placeholder="Introduce tu nombre completo"
+            maxLength={100}
+          />
 
-        <AppInput
-          label="Correo electrónico"
-          value={email}
-          onChangeText={(value) => setEmail(value.slice(0, 100))}
-          placeholder="correo@ejemplo.com"
-          keyboardType="email-address"
-          autoCapitalize="none"
-          autoCorrect={false}
-          maxLength={100}
-        />
+          <AppInput
+            label="Correo electrónico"
+            value={email}
+            onChangeText={(value) => setEmail(value.slice(0, 100))}
+            placeholder="correo@ejemplo.com"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+            maxLength={100}
+          />
 
-        <SelectBox
-          label="Ciudad"
-          value={selectedCiudad?.nombre_ciudad || ""}
-          placeholder="Selecciona tu ciudad"
-          open={showCiudades}
-          onToggle={() => setShowCiudades(!showCiudades)}
-          options={ciudades.map((ciudad) => ({
-            label: ciudad.nombre_ciudad,
-            onPress: () => {
-              setSelectedCiudad(ciudad);
-              setShowCiudades(false);
-            },
-          }))}
-        />
+          <SelectBox
+            label="Ciudad"
+            value={selectedCiudad?.nombre_ciudad || ""}
+            placeholder="Selecciona tu ciudad"
+            open={showCiudades}
+            onToggle={() => setShowCiudades(!showCiudades)}
+            options={ciudades.map((ciudad) => ({
+              label: ciudad.nombre_ciudad,
+              onPress: () => {
+                setSelectedCiudad(ciudad);
+                setShowCiudades(false);
+              },
+            }))}
+          />
 
-        <SelectBox
-          label="Centro"
-          value={selectedCentro?.nombre_centro || ""}
-          placeholder={
-            selectedCiudad ? "Selecciona tu centro" : "Selecciona primero una ciudad"
-          }
-          disabled={!selectedCiudad}
-          open={showCentros}
-          onToggle={() => {
-            if (selectedCiudad) setShowCentros(!showCentros);
-          }}
-          options={centros.map((centro) => ({
-            label: centro.nombre_centro,
-            onPress: () => {
-              setSelectedCentro(centro);
-              setShowCentros(false);
-            },
-          }))}
-        />
+          <SelectBox
+            label="Centro"
+            value={selectedCentro?.nombre_centro || ""}
+            placeholder={
+              selectedCiudad ? "Selecciona tu centro" : "Selecciona primero una ciudad"
+            }
+            disabled={!selectedCiudad}
+            open={showCentros}
+            onToggle={() => {
+              if (selectedCiudad) setShowCentros(!showCentros);
+            }}
+            options={centros.map((centro) => ({
+              label: centro.nombre_centro,
+              onPress: () => {
+                setSelectedCentro(centro);
+                setShowCentros(false);
+              },
+            }))}
+          />
 
-        <AppInput
-          label="Contraseña"
-          value={password}
-          onChangeText={(value) => setPassword(value.slice(0, 100))}
-          placeholder="Introduce tu contraseña"
-          secureTextEntry
-          autoCapitalize="none"
-          autoCorrect={false}
-          maxLength={100}
-        />
+          <AppInput
+            label="Contraseña"
+            value={password}
+            onChangeText={(value) => setPassword(value.slice(0, 100))}
+            placeholder="Introduce tu contraseña"
+            secureTextEntry
+            autoCapitalize="none"
+            autoCorrect={false}
+            maxLength={100}
+          />
 
-        <AppInput
-          label="Confirmar contraseña"
-          value={passwordCheck}
-          onChangeText={(value) => setPasswordCheck(value.slice(0, 100))}
-          placeholder="Repite tu contraseña"
-          secureTextEntry
-          autoCapitalize="none"
-          autoCorrect={false}
-          maxLength={100}
-        />
+          <AppInput
+            label="Confirmar contraseña"
+            value={passwordCheck}
+            onChangeText={(value) => setPasswordCheck(value.slice(0, 100))}
+            placeholder="Repite tu contraseña"
+            secureTextEntry
+            autoCapitalize="none"
+            autoCorrect={false}
+            maxLength={100}
+          />
 
-        <AppButton
-          title="Registrarse"
-          onPress={handleRegister}
-        />
+          <AppButton
+            title="Registrarse"
+            onPress={handleRegister}
+          />
 
-        <Pressable onPress={() => router.push("/auth/login")}>
-          <Text className="text-center text-sm text-gray-500 mt-5">
-            ¿Ya tienes cuenta?{" "}
-            <Text className="text-blue-600 font-semibold">Inicia sesión</Text>
-          </Text>
-        </Pressable>
-      </View>
-    </ScrollView>
+          <Pressable onPress={() => router.push("/auth/login")}>
+            <Text className="text-center text-sm text-gray-500 mt-5">
+              ¿Ya tienes cuenta?{" "}
+              <Text className="text-blue-600 font-semibold">Inicia sesión</Text>
+            </Text>
+          </Pressable>
+        </View>
+      </ScrollView>
+    </>
   );
 }
 

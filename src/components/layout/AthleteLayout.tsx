@@ -22,17 +22,6 @@ type MenuItem = {
   route: string;
 };
 
-/*const menuItems: MenuItem[] = [
-  { label: "Dashboard", icon: "🏠", route: "/athlete/dashboard" },
-  { label: "Registro", icon: "📝", route: "/athlete/daily-register" },
-  { label: "Entreno", icon: "🏋️", route: "/athlete/training" },
-  { label: "Sueño", icon: "🌙", route: "/athlete/sleep" },
-  { label: "Frecuencia Cardiaca", icon: "❤️", route: "/athlete/hrv" },
-  { label: "Auto percepción", icon: "🙂", route: "/athlete/self-perception" },
-  { label: "Molestias", icon: "⚠️", route: "/athlete/discomfort" },
-  { label: "Ciclo", icon: "📅", route: "/athlete/menstrual-cycle" },
-  { label: "Perfil", icon: "👤", route: "/athlete/profile" },
-];*/
 const menuItems: MenuItem[] = [
   { label: "Dashboard", icon: "home-outline", route: "/athlete/dashboard" },
   { label: "Registro", icon: "create-outline", route: "/athlete/daily-register" },

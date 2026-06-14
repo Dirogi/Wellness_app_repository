@@ -23,14 +23,6 @@ const superAdminMenuItems: SuperAdminMenuItem[] = [
   { label: "Perfil", icon: "person-outline", route: "/superadmin/profile" },
 ];
 
-/*const menuItems = [
-  { label: "Dashboard", icon: "🏠", route: "/superadmin/dashboard" },
-  { label: "Ciudades", icon: "🌆", route: "/superadmin/cities" },
-  { label: "Centros", icon: "🏢", route: "/superadmin/centers" },
-  { label: "Admins", icon: "🛡️", route: "/superadmin/admins" },
-  { label: "Perfil", icon: "👤", route: "/superadmin/profile" },
-];*/
-
 export default function SuperAdminLayout({
   children,
   title,
