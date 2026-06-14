@@ -1014,9 +1014,9 @@ export default function DailyRegisterScreen() {
               onChange={setSleepQuality}
             />
 
-            <View className="flex-row gap-3 mb-4">
+            <View className="flex-row gap-3 mb-6 mt-2">
               <View className="flex-1">
-                <Text className="text-sm font-medium text-gray-700 mb-2">
+                <Text className="text-sm font-medium text-gray-700 mb-1">
                   Hora de acostarse
                 </Text>
 
@@ -1034,7 +1034,7 @@ export default function DailyRegisterScreen() {
                     />
                   </View>
 
-                  <Text className="text-xl font-bold text-gray-500 mb-4">:</Text>
+                  <Text className="text-xl font-bold text-gray-500 mb-0">:</Text>
 
                   <View className="flex-1">
                     <AppInput
@@ -1052,7 +1052,7 @@ export default function DailyRegisterScreen() {
               </View>
 
               <View className="flex-1">
-                <Text className="text-sm font-medium text-gray-700 mb-2">
+                <Text className="text-sm font-medium text-gray-700 mb-1">
                   Hora de levantarse
                 </Text>
 
@@ -1070,7 +1070,7 @@ export default function DailyRegisterScreen() {
                     />
                   </View>
 
-                  <Text className="text-xl font-bold text-gray-500 mb-4">:</Text>
+                  <Text className="text-xl font-bold text-gray-500 mb-0">:</Text>
 
                   <View className="flex-1">
                     <AppInput
