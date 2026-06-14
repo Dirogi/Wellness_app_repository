@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Alert, Text, View } from "react-native";
 
 import SuperAdminLayout from "../../src/components/layout/SuperAdminLayout";
@@ -20,6 +20,7 @@ export default function SuperAdminCities() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [updatingCityId, setUpdatingCityId] = useState<number | null>(null);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     loadCities();
@@ -61,14 +62,26 @@ export default function SuperAdminCities() {
       return;
     }
 
+    const cityAlreadyExists = cities.some(
+      (city) =>
+        city.nombre_ciudad.trim().toLowerCase() ===
+        cleanedCityName.toLowerCase()
+    );
+
+    if (cityAlreadyExists) {
+      Alert.alert(
+        "Ciudad ya existente",
+        "Ya existe una ciudad con ese nombre."
+      );
+      return;
+    }
+
     setSaving(true);
 
-    const { error } = await supabase
-      .from("ciudades")
-      .insert({
-        nombre_ciudad: cleanedCityName,
-        active: true,
-      });
+    const { error } = await supabase.from("ciudades").insert({
+      nombre_ciudad: cleanedCityName,
+      active: true,
+    });
 
     if (error) {
       Alert.alert("Error", "No se ha podido crear la ciudad.");
@@ -85,7 +98,7 @@ export default function SuperAdminCities() {
     Alert.alert(
       city.active ? "Desactivar ciudad" : "Activar ciudad",
       city.active
-        ? "La ciudad dejará de estar disponible para nuevos registros. Los datos existentes no se eliminarán."
+        ? "La ciudad y sus centros asociados dejarán de estar disponible para nuevos registros. Los datos existentes no se eliminarán."
         : "La ciudad volverá a estar disponible para nuevos registros.",
       [
         { text: "Cancelar", style: "cancel" },
@@ -121,6 +134,12 @@ export default function SuperAdminCities() {
       ]
     );
   }
+
+  const filteredCities = useMemo(() => {
+    return cities.filter((city) =>
+      city.nombre_ciudad.toLowerCase().includes(search.toLowerCase())
+    );
+  }, [cities, search]);
 
   if (loading) {
     return (
@@ -158,59 +177,78 @@ export default function SuperAdminCities() {
         />
       </AppCard>
 
-      <View className="gap-4">
-        {cities.length > 0 ? (
-          cities.map((city) => (
-            <AppCard key={city.id_ciudad}>
-              <View className="flex-row justify-between items-start mb-4">
-                    <View className="flex-1 pr-3">
-                    <Text className="text-lg font-bold text-gray-900">
-                        {city.nombre_ciudad}
-                    </Text>
+      <AppCard className="mb-6">
+        <Text className="text-lg font-bold text-gray-900 mb-1">
+          Buscar ciudad
+        </Text>
 
-                    <Text className="text-gray-500 text-sm mt-1">
-                        {city.active
-                        ? "Disponible para nuevos registros"
-                        : "No disponible para nuevos registros"}
-                    </Text>
-                    </View>
+        <Text className="text-gray-500 mb-4">
+          Busca ciudades registradas en el sistema.
+        </Text>
 
-                    <View
-                    className={`px-3 py-1 rounded-full ${
-                        city.active ? "bg-emerald-100" : "bg-red-100"
-                    }`}
-                    >
-                    <Text
-                        className={`text-xs font-bold ${
-                        city.active ? "text-emerald-700" : "text-red-700"
-                        }`}
-                    >
-                        {city.active ? "Activa" : "Inactiva"}
-                    </Text>
-                    </View>
-              </View>
+        <AppInput
+          label=""
+          value={search}
+          onChangeText={(value) => setSearch(value.slice(0, 80))}
+          placeholder="Buscar ciudad..."
+          maxLength={80}
+        />
+      
 
-              <AppButton
-                title={
-                  updatingCityId === city.id_ciudad
-                    ? "Actualizando..."
-                    : city.active
-                    ? "Desactivar ciudad"
-                    : "Activar ciudad"
-                }
-                variant={city.active ? "danger" : undefined}
-                disabled={updatingCityId === city.id_ciudad}
-                onPress={() => toggleCityStatus(city)}
-              />
-            
-            </AppCard>
-          ))
-        ) : (
-          <Text className="text-gray-500">
-            No hay ciudades registradas.
-          </Text>
-        )}
-      </View>
+        <View className="gap-4">
+          {filteredCities.length > 0 ? (
+            filteredCities.map((city) => (
+              <AppCard key={city.id_ciudad}>
+                <View className="flex-row justify-between items-start mb-4">
+                      <View className="flex-1 pr-3">
+                      <Text className="text-lg font-bold text-gray-900">
+                          {city.nombre_ciudad}
+                      </Text>
+
+                      <Text className="text-gray-500 text-sm mt-1">
+                          {city.active
+                          ? "Disponible para nuevos registros"
+                          : "No disponible para nuevos registros"}
+                      </Text>
+                      </View>
+
+                      <View
+                      className={`px-3 py-1 rounded-full ${
+                          city.active ? "bg-emerald-100" : "bg-red-100"
+                      }`}
+                      >
+                      <Text
+                          className={`text-xs font-bold ${
+                          city.active ? "text-emerald-700" : "text-red-700"
+                          }`}
+                      >
+                          {city.active ? "Activa" : "Inactiva"}
+                      </Text>
+                      </View>
+                </View>
+                {city.nombre_ciudad !== "Sistema" && (
+                  <AppButton
+                    title={
+                      updatingCityId === city.id_ciudad
+                        ? "Actualizando..."
+                        : city.active
+                        ? "Desactivar ciudad"
+                        : "Activar ciudad"
+                    }
+                    variant={city.active ? "danger" : undefined}
+                    disabled={updatingCityId === city.id_ciudad}
+                    onPress={() => toggleCityStatus(city)}
+                  />
+                )}
+              </AppCard>
+            ))
+          ) : (
+            <Text className="text-gray-500">
+              No hay ciudades registradas.
+            </Text>
+          )}
+        </View>
+      </AppCard>
     </SuperAdminLayout>
   );
 }

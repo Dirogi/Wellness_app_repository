@@ -80,6 +80,8 @@ export default function DailyRegisterScreen() {
   const [selectedEmotionalSymptoms, setSelectedEmotionalSymptoms] = useState<string[]>([]);
   const [menstrualNotes, setMenstrualNotes] = useState("");
 
+  const [saving, setSaving] = useState(false);
+
   const trainingLoad = useMemo(() => {
     const minutes = Number(duration);
     if (!minutes || minutes <= 0) return 0;
@@ -304,12 +306,24 @@ export default function DailyRegisterScreen() {
   }
 
   async function saveTrainingSection() {
+    if (saving) return;
+
+    setSaving(true);
+
     const idRegistroDiario = await getOrCreateTodayRegister();
 
-    if (!idRegistroDiario) return;
+    if (!idRegistroDiario) {
+      setSaving(false);
+      return;
+    }
 
     if (!trainingType || !duration) {
-      console.log("Faltan datos de entrenamiento");
+      Alert.alert(
+        "Campos incompletos",
+        "Completa los datos de entrenamiento."
+      );
+
+      setSaving(false);
       return;
     }
 
@@ -320,6 +334,8 @@ export default function DailyRegisterScreen() {
         "Duración no válida",
         "Introduce una duración entre 1 y 600 minutos."
       );
+
+      setSaving(false);
       return;
     }
 
@@ -340,26 +356,48 @@ export default function DailyRegisterScreen() {
       );
 
     if (error) {
-      console.log("Error guardando entrenamiento:", error.message);
+      Alert.alert(
+        "Error",
+        "No se ha podido guardar el entrenamiento."
+      );
+
+      setSaving(false);
       return;
     }
 
     markCompleted();
-    console.log("Entrenamiento guardado correctamente");
+    setSaving(false);
   }
 
   async function saveSleepSection() {
+    if (saving) return;
+
+    setSaving(true);
+
     const idRegistroDiario = await getOrCreateTodayRegister();
 
-    if (!idRegistroDiario) return;
+    if (!idRegistroDiario) {
+      setSaving(false);
+      return;
+    }
 
     if (!bedHour || !bedMinute || !wakeHour || !wakeMinute) {
-      console.log("Faltan datos de sueño");
+      Alert.alert(
+        "Campos incompletos",
+        "Completa los horarios de sueño."
+      );
+
+      setSaving(false);
       return;
     }
 
     if (calculatedSleepHours === "-") {
-      console.log("Horas de sueño no válidas");
+      Alert.alert(
+        "Sueño no válido",
+        "Revisa la hora de acostarte y la hora de levantarte."
+      );
+
+      setSaving(false);
       return;
     }
 
@@ -373,6 +411,20 @@ export default function DailyRegisterScreen() {
         "Horario no válido",
         "Introduce horas entre 0 y 23 y minutos entre 0 y 59."
       );
+
+      setSaving(false);
+      return;
+    }
+
+    const sleepHoursNumber = Number(calculatedSleepHours);
+
+    if (sleepHoursNumber <= 0 || sleepHoursNumber > 14) {
+      Alert.alert(
+        "Sueño no válido",
+        "Introduce un intervalo de sueño entre 1 y 14 horas."
+      );
+
+      setSaving(false);
       return;
     }
 
@@ -380,17 +432,28 @@ export default function DailyRegisterScreen() {
 
     if (
       wakeupsNumber !== null &&
-      (!Number.isInteger(wakeupsNumber) || wakeupsNumber < 0 || wakeupsNumber > 20)
+      (!Number.isInteger(wakeupsNumber) ||
+        wakeupsNumber < 0 ||
+        wakeupsNumber > 20)
     ) {
       Alert.alert(
         "Despertares no válidos",
         "Introduce un número de despertares entre 0 y 20."
       );
+
+      setSaving(false);
       return;
     }
 
-    const horaAcostarse = `${bedHour.padStart(2, "0")}:${bedMinute.padStart(2, "0")}:00`;
-    const horaLevantarse = `${wakeHour.padStart(2, "0")}:${wakeMinute.padStart(2, "0")}:00`;
+    const horaAcostarse = `${bedHour.padStart(2, "0")}:${bedMinute.padStart(
+      2,
+      "0"
+    )}:00`;
+
+    const horaLevantarse = `${wakeHour.padStart(2, "0")}:${wakeMinute.padStart(
+      2,
+      "0"
+    )}:00`;
 
     const { error } = await supabase
       .from("suenos")
@@ -400,7 +463,7 @@ export default function DailyRegisterScreen() {
           calidad_sueno: sleepQuality,
           hora_acostarse: horaAcostarse,
           hora_levantarse: horaLevantarse,
-          horas_de_sueno: Number(calculatedSleepHours),
+          horas_de_sueno: sleepHoursNumber,
           numero_despertares: wakeupsNumber,
           notas_sueno: cleanText(sleepNotes) || null,
         },
@@ -410,21 +473,45 @@ export default function DailyRegisterScreen() {
       );
 
     if (error) {
-      console.log("Error guardando sueño:", error.message);
+      Alert.alert(
+        "Error",
+        "No se ha podido guardar el sueño."
+      );
+
+      setSaving(false);
       return;
     }
 
     markCompleted();
-    console.log("Sueño guardado correctamente");
+    setSaving(false);
   }
 
   async function saveHeartSection() {
+    if (saving) return;
+
+    setSaving(true);
+
     const idRegistroDiario = await getOrCreateTodayRegister();
 
-    if (!idRegistroDiario) return;
+    if (!idRegistroDiario) {
+      setSaving(false);
+      return;
+    }
 
-    if (!hrv || !hrvHour || !hrvMinute || !restingHr || !restingHrHour || !restingHrMinute) {
-      console.log("Faltan datos de frecuencia cardiaca");
+    if (
+      !hrv ||
+      !hrvHour ||
+      !hrvMinute ||
+      !restingHr ||
+      !restingHrHour ||
+      !restingHrMinute
+    ) {
+      Alert.alert(
+        "Campos incompletos",
+        "Completa los datos de frecuencia cardiaca."
+      );
+
+      setSaving(false);
       return;
     }
 
@@ -432,7 +519,12 @@ export default function DailyRegisterScreen() {
     const restingHrNumber = parsePositiveNumber(restingHr);
 
     if (!hrvNumber || hrvNumber < 1 || hrvNumber > 300) {
-      Alert.alert("HRV no válido", "Introduce un HRV entre 1 y 300 ms.");
+      Alert.alert(
+        "HRV no válido",
+        "Introduce un HRV entre 1 y 300 ms."
+      );
+
+      setSaving(false);
       return;
     }
 
@@ -441,6 +533,8 @@ export default function DailyRegisterScreen() {
         "FC en reposo no válida",
         "Introduce una frecuencia cardiaca entre 20 y 250 bpm."
       );
+
+      setSaving(false);
       return;
     }
 
@@ -454,11 +548,20 @@ export default function DailyRegisterScreen() {
         "Horario no válido",
         "Introduce horas entre 0 y 23 y minutos entre 0 y 59."
       );
+
+      setSaving(false);
       return;
     }
 
-    const horaMedicionHrv = `${hrvHour.padStart(2, "0")}:${hrvMinute.padStart(2, "0")}:00`;
-    const horaMedicionReposo = `${restingHrHour.padStart(2, "0")}:${restingHrMinute.padStart(2, "0")}:00`;
+    const horaMedicionHrv = `${hrvHour.padStart(2, "0")}:${hrvMinute.padStart(
+      2,
+      "0"
+    )}:00`;
+
+    const horaMedicionReposo = `${restingHrHour.padStart(
+      2,
+      "0"
+    )}:${restingHrMinute.padStart(2, "0")}:00`;
 
     const { error } = await supabase
       .from("frecuencias_cardiacas")
@@ -478,18 +581,30 @@ export default function DailyRegisterScreen() {
       );
 
     if (error) {
-      console.log("Error guardando frecuencia cardiaca:", error.message);
+      Alert.alert(
+        "Error",
+        "No se ha podido guardar la frecuencia cardiaca."
+      );
+
+      setSaving(false);
       return;
     }
 
     markCompleted();
-    console.log("Frecuencia cardiaca guardada correctamente");
+    setSaving(false);
   }
 
   async function saveSelfPerceptionSection() {
+    if (saving) return;
+
+    setSaving(true);
+
     const idRegistroDiario = await getOrCreateTodayRegister();
 
-    if (!idRegistroDiario) return;
+    if (!idRegistroDiario) {
+      setSaving(false);
+      return;
+    }
 
     const { error } = await supabase
       .from("autopercepciones")
@@ -513,24 +628,38 @@ export default function DailyRegisterScreen() {
       );
 
     if (error) {
-      console.log("Error guardando autopercepción:", error.message);
+      Alert.alert(
+        "Error",
+        "No se ha podido guardar la autopercepción."
+      );
+
+      setSaving(false);
       return;
     }
 
     markCompleted();
-    console.log("Autopercepción guardada correctamente");
+    setSaving(false);
   }
 
   async function saveDiscomfortSection() {
+    if (saving) return;
+
+    setSaving(true);
+
     const idRegistroDiario = await getOrCreateTodayRegister();
 
-    if (!idRegistroDiario) return;
+    if (!idRegistroDiario) {
+      setSaving(false);
+      return;
+    }
 
     if (hasPain && selectedBodyAreas.length === 0) {
       Alert.alert(
         "Zona no indicada",
         "Selecciona al menos una zona corporal."
       );
+
+      setSaving(false);
       return;
     }
 
@@ -541,8 +670,12 @@ export default function DailyRegisterScreen() {
           id_registro_diario: idRegistroDiario,
           dolor: hasPain,
           intensidad: hasPain ? painIntensity : null,
-          tipo_molestia: hasPain ? cleanText(discomfortType, 80) || null : null,
-          notas_molestias: hasPain ? cleanText(discomfortNotes) || null : null,
+          tipo_molestia: hasPain
+            ? cleanText(discomfortType, 80) || null
+            : null,
+          notas_molestias: hasPain
+            ? cleanText(discomfortNotes) || null
+            : null,
         },
         {
           onConflict: "id_registro_diario",
@@ -552,14 +685,29 @@ export default function DailyRegisterScreen() {
       .single();
 
     if (error || !molestia) {
-      console.log("Error guardando molestias:", error?.message);
+      Alert.alert(
+        "Error",
+        "No se han podido guardar las molestias."
+      );
+
+      setSaving(false);
       return;
     }
 
-    await supabase
+    const { error: deleteError } = await supabase
       .from("relaciones_molestias_zonas")
       .delete()
       .eq("id_molestia", molestia.id_molestia);
+
+    if (deleteError) {
+      Alert.alert(
+        "Error",
+        "No se han podido actualizar las zonas afectadas."
+      );
+
+      setSaving(false);
+      return;
+    }
 
     if (hasPain && selectedBodyAreas.length > 0) {
       const { data: zonas, error: zonasError } = await supabase
@@ -568,7 +716,12 @@ export default function DailyRegisterScreen() {
         .in("nombre_zona", selectedBodyAreas);
 
       if (zonasError) {
-        console.log("Error obteniendo zonas:", zonasError.message);
+        Alert.alert(
+          "Error",
+          "No se han podido obtener las zonas corporales."
+        );
+
+        setSaving(false);
         return;
       }
 
@@ -583,20 +736,32 @@ export default function DailyRegisterScreen() {
           .insert(relaciones);
 
         if (relacionesError) {
-          console.log("Error guardando zonas:", relacionesError.message);
+          Alert.alert(
+            "Error",
+            "No se han podido guardar las zonas afectadas."
+          );
+
+          setSaving(false);
           return;
         }
       }
     }
 
     markCompleted();
-    console.log("Molestias guardadas correctamente");
+    setSaving(false);
   }
 
   async function saveCycleSection() {
+    if (saving) return;
+
+    setSaving(true);
+
     const idRegistroDiario = await getOrCreateTodayRegister();
 
-    if (!idRegistroDiario) return;
+    if (!idRegistroDiario) {
+      setSaving(false);
+      return;
+    }
 
     const { data: ciclo, error } = await supabase
       .from("ciclos_menstruales")
@@ -618,19 +783,44 @@ export default function DailyRegisterScreen() {
       .single();
 
     if (error || !ciclo) {
-      console.log("Error guardando ciclo menstrual:", error?.message);
+      Alert.alert(
+        "Error",
+        "No se ha podido guardar el ciclo menstrual."
+      );
+
+      setSaving(false);
       return;
     }
 
-    await supabase
+    const { error: deleteFisicosError } = await supabase
       .from("relaciones_sintomas_fisicos")
       .delete()
       .eq("id_menstruacion", ciclo.id_menstruacion);
 
-    await supabase
+    if (deleteFisicosError) {
+      Alert.alert(
+        "Error",
+        "No se han podido actualizar los síntomas físicos."
+      );
+
+      setSaving(false);
+      return;
+    }
+
+    const { error: deleteEmocionalesError } = await supabase
       .from("relaciones_sintomas_emocionales")
       .delete()
       .eq("id_menstruacion", ciclo.id_menstruacion);
+
+    if (deleteEmocionalesError) {
+      Alert.alert(
+        "Error",
+        "No se han podido actualizar los síntomas emocionales."
+      );
+
+      setSaving(false);
+      return;
+    }
 
     if (activeMenstruation && selectedPhysicalSymptoms.length > 0) {
       const { data: sintomasFisicos, error: fisicosError } = await supabase
@@ -639,7 +829,12 @@ export default function DailyRegisterScreen() {
         .in("nombre_sintoma_fisico", selectedPhysicalSymptoms);
 
       if (fisicosError) {
-        console.log("Error obteniendo síntomas físicos:", fisicosError.message);
+        Alert.alert(
+          "Error",
+          "No se han podido obtener los síntomas físicos."
+        );
+
+        setSaving(false);
         return;
       }
 
@@ -654,27 +849,40 @@ export default function DailyRegisterScreen() {
           .insert(relacionesFisicas);
 
         if (relacionesFisicasError) {
-          console.log("Error guardando síntomas físicos:", relacionesFisicasError.message);
+          Alert.alert(
+            "Error",
+            "No se han podido guardar los síntomas físicos."
+          );
+
+          setSaving(false);
           return;
         }
       }
     }
 
     if (activeMenstruation && selectedEmotionalSymptoms.length > 0) {
-      const { data: sintomasEmocionales, error: emocionalesError } = await supabase
-        .from("sintomas_emocionales")
-        .select("id_sintoma_emocional, nombre_sintoma_emocional")
-        .in("nombre_sintoma_emocional", selectedEmotionalSymptoms);
+      const { data: sintomasEmocionales, error: emocionalesError } =
+        await supabase
+          .from("sintomas_emocionales")
+          .select("id_sintoma_emocional, nombre_sintoma_emocional")
+          .in("nombre_sintoma_emocional", selectedEmotionalSymptoms);
 
       if (emocionalesError) {
-        console.log("Error obteniendo síntomas emocionales:", emocionalesError.message);
+        Alert.alert(
+          "Error",
+          "No se han podido obtener los síntomas emocionales."
+        );
+
+        setSaving(false);
         return;
       }
 
-      const relacionesEmocionales = (sintomasEmocionales || []).map((sintoma) => ({
-        id_menstruacion: ciclo.id_menstruacion,
-        id_sintoma_emocional: sintoma.id_sintoma_emocional,
-      }));
+      const relacionesEmocionales = (sintomasEmocionales || []).map(
+        (sintoma) => ({
+          id_menstruacion: ciclo.id_menstruacion,
+          id_sintoma_emocional: sintoma.id_sintoma_emocional,
+        })
+      );
 
       if (relacionesEmocionales.length > 0) {
         const { error: relacionesEmocionalesError } = await supabase
@@ -682,14 +890,19 @@ export default function DailyRegisterScreen() {
           .insert(relacionesEmocionales);
 
         if (relacionesEmocionalesError) {
-          console.log("Error guardando síntomas emocionales:", relacionesEmocionalesError.message);
+          Alert.alert(
+            "Error",
+            "No se han podido guardar los síntomas emocionales."
+          );
+
+          setSaving(false);
           return;
         }
       }
     }
 
     markCompleted();
-    console.log("Ciclo menstrual guardado correctamente");
+    setSaving(false);
   }
 
   
@@ -749,16 +962,20 @@ export default function DailyRegisterScreen() {
             <AppInput
               label="Tipo de entrenamiento"
               value={trainingType}
-              onChangeText={setTrainingType}
+              onChangeText={(value) => setTrainingType(value.slice(0, 80))}
               placeholder="Fuerza, carrera, movilidad..."
+              maxLength={80}
             />
 
             <AppInput
               label="Duración (minutos)"
               value={duration}
-              onChangeText={setDuration}
+              onChangeText={(value) =>
+                setDuration(value.replace(/[^0-9]/g, "").slice(0, 3))
+              }
               placeholder="Ej. 60"
               keyboardType="numeric"
+              maxLength={3}
             />
 
             <AppSlider
@@ -781,7 +998,7 @@ export default function DailyRegisterScreen() {
             <NotesInput
               label="Notas"
               value={trainingNotes}
-              onChangeText={setTrainingNotes}
+              onChangeText={(value) => setTrainingNotes(value.slice(0, 500))}
               placeholder="Observaciones sobre el entrenamiento"
             />
           </View>
@@ -808,9 +1025,12 @@ export default function DailyRegisterScreen() {
                     <AppInput
                       label=""
                       value={bedHour}
-                      onChangeText={setBedHour}
+                      onChangeText={(value) =>
+                        setBedHour(value.replace(/[^0-9]/g, "").slice(0, 2))
+                      }
                       placeholder="23"
                       keyboardType="numeric"
+                      maxLength={2}
                     />
                   </View>
 
@@ -820,9 +1040,12 @@ export default function DailyRegisterScreen() {
                     <AppInput
                       label=""
                       value={bedMinute}
-                      onChangeText={setBedMinute}
+                      onChangeText={(value) =>
+                        setBedMinute(value.replace(/[^0-9]/g, "").slice(0, 2))
+                      }
                       placeholder="30"
                       keyboardType="numeric"
+                      maxLength={2}
                     />
                   </View>
                 </View>
@@ -838,9 +1061,12 @@ export default function DailyRegisterScreen() {
                     <AppInput
                       label=""
                       value={wakeHour}
-                      onChangeText={setWakeHour}
+                      onChangeText={(value) =>
+                        setWakeHour(value.replace(/[^0-9]/g, "").slice(0, 2))
+                      }
                       placeholder="07"
                       keyboardType="numeric"
+                      maxLength={2}
                     />
                   </View>
 
@@ -850,9 +1076,12 @@ export default function DailyRegisterScreen() {
                     <AppInput
                       label=""
                       value={wakeMinute}
-                      onChangeText={setWakeMinute}
+                      onChangeText={(value) =>
+                        setWakeMinute(value.replace(/[^0-9]/g, "").slice(0, 2))
+                      }
                       placeholder="30"
                       keyboardType="numeric"
+                      maxLength={2}
                     />
                   </View>
                 </View>
@@ -874,15 +1103,18 @@ export default function DailyRegisterScreen() {
             <AppInput
               label="Número de despertares"
               value={wakeups}
-              onChangeText={setWakeups}
+              onChangeText={(value) =>
+                setWakeups(value.replace(/[^0-9]/g, "").slice(0, 2))
+              }
               placeholder="Ej. 2"
               keyboardType="numeric"
+              maxLength={2}
             />
 
             <NotesInput
               label="Notas"
               value={sleepNotes}
-              onChangeText={setSleepNotes}
+              onChangeText={(value) => setSleepNotes(value.slice(0, 500))}
               placeholder="Observaciones sobre el sueño"
             />
           </View>
@@ -900,9 +1132,12 @@ export default function DailyRegisterScreen() {
               <AppInput
                 label="HRV"
                 value={hrv}
-                onChangeText={setHrv}
+                onChangeText={(value) =>
+                  setHrv(value.replace(/[^0-9]/g, "").slice(0, 3))
+                }
                 placeholder="Ej. 72"
                 keyboardType="numeric"
+                maxLength={3}
               />
 
               <TimeInputGroup
@@ -916,8 +1151,9 @@ export default function DailyRegisterScreen() {
               <AppInput
                 label="Método de medición"
                 value={measurementMethod}
-                onChangeText={setMeasurementMethod}
+                onChangeText={(value) => setMeasurementMethod(value.slice(0, 80))}
                 placeholder="Ej. pulsómetro, reloj, banda..."
+                maxLength={80}
               />
             </View>
 
@@ -929,9 +1165,12 @@ export default function DailyRegisterScreen() {
               <AppInput
                 label="FC en reposo"
                 value={restingHr}
-                onChangeText={setRestingHr}
+                onChangeText={(value) =>
+                  setRestingHr(value.replace(/[^0-9]/g, "").slice(0, 3))
+                }
                 placeholder="Ej. 48"
                 keyboardType="numeric"
+                 maxLength={3}
               />
 
               <TimeInputGroup
@@ -946,7 +1185,7 @@ export default function DailyRegisterScreen() {
             <NotesInput
               label="Notas"
               value={heartNotes}
-              onChangeText={setHeartNotes}
+              onChangeText={(value) => setHeartNotes(value.slice(0, 500))}
               placeholder="Observaciones sobre la frecuencia cardiaca"
             />
           </View>
@@ -1047,7 +1286,7 @@ export default function DailyRegisterScreen() {
             <NotesInput
               label="Notas"
               value={selfNotes}
-              onChangeText={setSelfNotes}
+              onChangeText={(value) => setSelfNotes(value.slice(0, 500))}
               placeholder="Observaciones sobre el ánimo, fatiga o recuperación"
             />
           </View>
@@ -1081,14 +1320,15 @@ export default function DailyRegisterScreen() {
                 <AppInput
                   label="Tipo de molestia"
                   value={discomfortType}
-                  onChangeText={setDiscomfortType}
+                  onChangeText={(value) => setDiscomfortType(value.slice(0, 80))}
                   placeholder="Ej. pinchazo, sobrecarga, rigidez..."
+                  maxLength={80}
                 />
 
                 <NotesInput
                   label="Notas"
                   value={discomfortNotes}
-                  onChangeText={setDiscomfortNotes}
+                  onChangeText={(value) => setDiscomfortNotes(value.slice(0, 500))}
                   placeholder="Observaciones sobre los dolores o molestias"
                 />
               </>
@@ -1137,7 +1377,7 @@ export default function DailyRegisterScreen() {
                 <NotesInput
                   label="Notas"
                   value={menstrualNotes}
-                  onChangeText={setMenstrualNotes}
+                  onChangeText={(value) => setMenstrualNotes(value.slice(0, 500))}
                   placeholder="Observaciones sobre la menstruación"
                 />
               </>
@@ -1280,9 +1520,12 @@ function TimeInputGroup({
           <AppInput
             label=""
             value={hour}
-            onChangeText={onChangeHour}
+            onChangeText={(value) =>
+              onChangeHour(value.replace(/[^0-9]/g, "").slice(0, 2))
+            }
             placeholder="HH"
             keyboardType="numeric"
+            maxLength={2}
           />
         </View>
 
@@ -1292,9 +1535,12 @@ function TimeInputGroup({
           <AppInput
             label=""
             value={minute}
-            onChangeText={onChangeMinute}
+            onChangeText={(value) =>
+              onChangeMinute(value.replace(/[^0-9]/g, "").slice(0, 2))
+            }
             placeholder="MM"
             keyboardType="numeric"
+            maxLength={2}
           />
         </View>
       </View>

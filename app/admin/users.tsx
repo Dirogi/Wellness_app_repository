@@ -299,6 +299,12 @@ export default function AdminUsers() {
           filteredUsers.map((user) => {
             const statusStyle = getStatusStyle(user.id_estado_cuenta);
             
+            const isManageableUser = [
+              "deportista",
+              "entrenador",
+              "staff_medico",
+            ].includes(user.rol);
+
             return (
               <AppCard key={user.id_usuario}>
                 <View className="flex-row justify-between items-start mb-3">
@@ -328,7 +334,8 @@ export default function AdminUsers() {
                 </View>
 
                 {user.id_estado_cuenta === 2 &&
-                  user.id_usuario !== currentUserId && (
+                  user.id_usuario !== currentUserId &&
+                  isManageableUser && (
                     <AppButton
                       title="Bloquear cuenta"
                       variant="danger"
@@ -338,13 +345,14 @@ export default function AdminUsers() {
                 )}
 
                 {user.id_estado_cuenta === 3 &&
-                    user.id_usuario !== currentUserId && (
+                  user.id_usuario !== currentUserId &&
+                  isManageableUser && (
                     <AppButton
-                        title="Desbloquear cuenta"
-                        disabled={updatingUserId === user.id_usuario}
-                        onPress={() => unblockUser(user.id_usuario)}
+                      title="Desbloquear cuenta"
+                      disabled={updatingUserId === user.id_usuario}
+                      onPress={() => unblockUser(user.id_usuario)}
                     />
-                    )}
+                )}
               </AppCard>
             );
           })

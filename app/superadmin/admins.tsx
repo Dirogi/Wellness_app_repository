@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Alert, Pressable, Text, View } from "react-native";
 
 import SuperAdminLayout from "../../src/components/layout/SuperAdminLayout";
@@ -25,13 +25,14 @@ export default function SuperAdminAdmins() {
   const [cities, setCities] = useState<any[]>([]);
   const [centers, setCenters] = useState<any[]>([]);
 
-  
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [selectedCityId, setSelectedCityId] = useState<number | null>(null);
   const [selectedCenterId, setSelectedCenterId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [updatingAdminId, setUpdatingAdminId] = useState<string | null>(null);
+
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     loadData();
@@ -175,6 +176,24 @@ export default function SuperAdminAdmins() {
     setUpdatingAdminId(null);
   }
 
+  const filteredAdmins = useMemo(() => {
+    return admins.filter((admin) => {
+      const query = search.toLowerCase();
+
+      const name = admin.nombre_apellidos?.toLowerCase() || "";
+      const email = admin.correo_electronico?.toLowerCase() || "";
+      const center = first(admin.centros)?.nombre_centro?.toLowerCase() || "";
+      const city = first(admin.ciudades)?.nombre_ciudad?.toLowerCase() || "";
+
+      return (
+        name.includes(query) ||
+        email.includes(query) ||
+        center.includes(query) ||
+        city.includes(query)
+      );
+    });
+  }, [admins, search]);
+
   if (loading) {
     return (
       <SuperAdminLayout title="Admins">
@@ -299,78 +318,97 @@ export default function SuperAdminAdmins() {
         />
       </AppCard>
 
-      <View className="gap-4">
-        {admins.length > 0 ? (
-          admins.map((admin) => (
-            <AppCard key={admin.id_usuario}>
-              <View className="flex-row justify-between items-start mb-4">
-                <View className="flex-1 pr-3">
-                  <Text className="text-lg font-bold text-gray-900">
-                    {admin.nombre_apellidos}
-                  </Text>
+      <AppCard className="mb-6">
+        <Text className="text-lg font-bold text-gray-900 mb-1">
+          Buscar admin
+        </Text>
 
-                  <Text className="text-gray-500 text-sm mt-1">
-                    {admin.correo_electronico}
-                  </Text>
+        <Text className="text-gray-500 mb-4">
+          Busca por nombre, correo, centro o ciudad.
+        </Text>
 
-                  <Text className="text-gray-500 text-sm mt-1">
-                    {first(admin.centros)?.nombre_centro || "Centro no especificado"}
-                  </Text>
+        <AppInput
+          label=""
+          value={search}
+          onChangeText={(value) => setSearch(value.slice(0, 100))}
+          placeholder="Buscar admin..."
+          maxLength={100}
+        />
+      
 
-                  <Text className="text-gray-500 text-sm mt-1">
-                    {first(admin.ciudades)?.nombre_ciudad || "Ciudad no especificada"}
-                  </Text>
-                </View>
+        <View className="gap-4">
+          {filteredAdmins.length > 0 ? (
+            filteredAdmins.map((admin) => (
+              <AppCard key={admin.id_usuario}>
+                <View className="flex-row justify-between items-start mb-4">
+                  <View className="flex-1 pr-3">
+                    <Text className="text-lg font-bold text-gray-900">
+                      {admin.nombre_apellidos}
+                    </Text>
 
-                <View
-                  className={`px-3 py-1 rounded-full ${
-                    admin.id_estado_cuenta === 2
-                      ? "bg-emerald-100"
-                      : "bg-red-100"
-                  }`}
-                >
-                  <Text
-                    className={`text-xs font-bold ${
+                    <Text className="text-gray-500 text-sm mt-1">
+                      {admin.correo_electronico}
+                    </Text>
+
+                    <Text className="text-gray-500 text-sm mt-1">
+                      {first(admin.centros)?.nombre_centro || "Centro no especificado"}
+                    </Text>
+
+                    <Text className="text-gray-500 text-sm mt-1">
+                      {first(admin.ciudades)?.nombre_ciudad || "Ciudad no especificada"}
+                    </Text>
+                  </View>
+
+                  <View
+                    className={`px-3 py-1 rounded-full ${
                       admin.id_estado_cuenta === 2
-                        ? "text-emerald-700"
-                        : "text-red-700"
+                        ? "bg-emerald-100"
+                        : "bg-red-100"
                     }`}
                   >
-                    {admin.id_estado_cuenta === 2 ? "Activo" : "Bloqueado"}
-                  </Text>
+                    <Text
+                      className={`text-xs font-bold ${
+                        admin.id_estado_cuenta === 2
+                          ? "text-emerald-700"
+                          : "text-red-700"
+                      }`}
+                    >
+                      {admin.id_estado_cuenta === 2 ? "Activo" : "Bloqueado"}
+                    </Text>
+                  </View>
                 </View>
-              </View>
 
-              {admin.id_estado_cuenta === 2 ? (
-                <AppButton
-                  title={
-                    updatingAdminId === admin.id_usuario
-                      ? "Actualizando..."
-                      : "Bloquear admin"
-                  }
-                  variant="danger"
-                  disabled={updatingAdminId === admin.id_usuario}
-                  onPress={() => changeAdminStatus(admin.id_usuario, 3)}
-                />
-              ) : (
-                <AppButton
-                  title={
-                    updatingAdminId === admin.id_usuario
-                      ? "Actualizando..."
-                      : "Desbloquear admin"
-                  }
-                  disabled={updatingAdminId === admin.id_usuario}
-                  onPress={() => changeAdminStatus(admin.id_usuario, 2)}
-                />
-              )}
-            </AppCard>
-          ))
-        ) : (
-          <Text className="text-gray-500">
-            No hay administradores registrados.
-          </Text>
-        )}
-      </View>
+                {admin.id_estado_cuenta === 2 ? (
+                  <AppButton
+                    title={
+                      updatingAdminId === admin.id_usuario
+                        ? "Actualizando..."
+                        : "Bloquear admin"
+                    }
+                    variant="danger"
+                    disabled={updatingAdminId === admin.id_usuario}
+                    onPress={() => changeAdminStatus(admin.id_usuario, 3)}
+                  />
+                ) : (
+                  <AppButton
+                    title={
+                      updatingAdminId === admin.id_usuario
+                        ? "Actualizando..."
+                        : "Desbloquear admin"
+                    }
+                    disabled={updatingAdminId === admin.id_usuario}
+                    onPress={() => changeAdminStatus(admin.id_usuario, 2)}
+                  />
+                )}
+              </AppCard>
+            ))
+          ) : (
+            <Text className="text-gray-500">
+              No hay administradores que coincidan con la búsqueda.
+            </Text>
+          )}
+        </View>
+      </AppCard>
     </SuperAdminLayout>
   );
 }

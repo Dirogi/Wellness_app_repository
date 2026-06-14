@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Alert, Pressable, Text, View } from "react-native";
 
 import SuperAdminLayout from "../../src/components/layout/SuperAdminLayout";
@@ -37,6 +37,7 @@ export default function SuperAdminCenters() {
   const [selectedCityId, setSelectedCityId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [updatingCenterId, setUpdatingCenterId] = useState<number | null>(null);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     loadData();
@@ -95,6 +96,21 @@ export default function SuperAdminCenters() {
       Alert.alert(
         "Nombre demasiado largo",
         "El nombre del centro no puede superar los 100 caracteres."
+      );
+      return;
+    }
+
+    const centerAlreadyExists = centers.some(
+      (center) =>
+        center.nombre_centro.trim().toLowerCase() ===
+          cleanedCenterName.toLowerCase() &&
+        center.id_ciudad === selectedCityId
+    );
+
+    if (centerAlreadyExists) {
+      Alert.alert(
+        "Centro ya existente",
+        "Ya existe un centro con ese nombre en la ciudad seleccionada."
       );
       return;
     }
@@ -161,6 +177,16 @@ export default function SuperAdminCenters() {
       ]
     );
   }
+
+const filteredCenters = useMemo(() => {
+    return centers.filter((center) => {
+      const centerName = center.nombre_centro.toLowerCase();
+      const cityName = first(center.ciudades)?.nombre_ciudad?.toLowerCase() || "";
+      const query = search.toLowerCase();
+
+      return centerName.includes(query) || cityName.includes(query);
+    });
+  }, [centers, search]);
 
   if (loading) {
     return (
@@ -232,62 +258,84 @@ export default function SuperAdminCenters() {
         />
       </AppCard>
 
-      <View className="gap-4">
-        {centers.length > 0 ? (
-          centers.map((center) => (
-            <AppCard key={center.id_centro}>
-              <View className="flex-row justify-between items-start mb-4">
-                <View className="flex-1 pr-3">
-                  <Text className="text-lg font-bold text-gray-900">
-                    {center.nombre_centro}
-                  </Text>
+      <AppCard className="mb-6">
+        <Text className="text-lg font-bold text-gray-900 mb-1">
+          Buscar centro
+        </Text>
 
-                  <Text className="text-gray-500 text-sm mt-1">
-                    {first(center.ciudades)?.nombre_ciudad || "Ciudad no especificada"}
-                  </Text>
+        <Text className="text-gray-500 mb-1">
+          Busca por nombre de centro o ciudad.
+        </Text>
 
-                  <Text className="text-gray-500 text-sm mt-1">
-                    {center.active
-                      ? "Disponible para nuevos registros"
-                      : "No disponible para nuevos registros"}
-                  </Text>
-                </View>
+        <AppInput
+          label=""
+          value={search}
+          onChangeText={(value) => setSearch(value.slice(0, 100))}
+          placeholder="Buscar centro o ciudad..."
+          maxLength={100}
+        />
+      
 
-                <View
-                  className={`px-3 py-1 rounded-full ${
-                    center.active ? "bg-emerald-100" : "bg-red-100"
-                  }`}
-                >
-                  <Text
-                    className={`text-xs font-bold ${
-                      center.active ? "text-emerald-700" : "text-red-700"
+        <View className="gap-4">
+          {filteredCenters.length > 0 ? (
+            filteredCenters.map((center) => (
+              <AppCard key={center.id_centro}>
+                <View className="flex-row justify-between items-start mb-4">
+                  <View className="flex-1 pr-3">
+                    <Text className="text-lg font-bold text-gray-900">
+                      {center.nombre_centro}
+                    </Text>
+
+                    <Text className="text-gray-500 text-sm mt-1">
+                      {first(center.ciudades)?.nombre_ciudad || "Ciudad no especificada"}
+                    </Text>
+
+                    <Text className="text-gray-500 text-sm mt-1">
+                      {center.active
+                        ? "Disponible para nuevos registros"
+                        : "No disponible para nuevos registros"}
+                    </Text>
+                  </View>
+
+                  <View
+                    className={`px-3 py-1 rounded-full ${
+                      center.active ? "bg-emerald-100" : "bg-red-100"
                     }`}
                   >
-                    {center.active ? "Activo" : "Inactivo"}
-                  </Text>
+                    <Text
+                      className={`text-xs font-bold ${
+                        center.active ? "text-emerald-700" : "text-red-700"
+                      }`}
+                    >
+                      {center.active ? "Activo" : "Inactivo"}
+                    </Text>
+                  </View>
                 </View>
-              </View>
 
-              <AppButton
-                title={
-                  updatingCenterId === center.id_centro
-                    ? "Actualizando..."
-                    : center.active
-                    ? "Desactivar centro"
-                    : "Activar centro"
-                }
-                variant={center.active ? "danger" : undefined}
-                disabled={updatingCenterId === center.id_centro}
-                onPress={() => toggleCenterStatus(center)}
-              />
-            </AppCard>
-          ))
-        ) : (
-          <Text className="text-gray-500">
-            No hay centros registrados.
-          </Text>
-        )}
-      </View>
+                {center.nombre_centro !== "Administración global" && (
+                  <AppButton
+                    title={
+                      updatingCenterId === center.id_centro
+                        ? "Actualizando..."
+                        : center.active
+                        ? "Desactivar centro"
+                        : "Activar centro"
+                    }
+                    variant={center.active ? "danger" : undefined}
+                    disabled={updatingCenterId === center.id_centro}
+                    onPress={() => toggleCenterStatus(center)}
+                  />
+                )}
+              </AppCard>
+            ))
+          ) : (
+            <Text className="text-gray-500">
+              No hay centros registrados.
+            </Text>
+          )}
+          
+        </View>
+      </AppCard>
     </SuperAdminLayout>
   );
 }

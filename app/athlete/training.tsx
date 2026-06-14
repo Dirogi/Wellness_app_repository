@@ -403,7 +403,6 @@ export default function TrainingScreen() {
                     label: shortDate(item.fecha),
                   }))}
                 height={170}
-                curved
                 areaChart
                 initialSpacing={12}
                 endSpacing={12}
