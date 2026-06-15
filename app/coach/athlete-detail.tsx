@@ -870,7 +870,7 @@ export default function CoachAthleteDetailScreen() {
                   >
                     <Text className="font-bold text-amber-800">{type}</Text>
                     <Text className="font-semibold text-amber-800">
-                      {count} registros
+                      {count} {count === 1 ? "registro" : "registros"}
                     </Text>
                   </View>
                 ))

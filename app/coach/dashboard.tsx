@@ -96,32 +96,38 @@ export default function CoachDashboard() {
         const usuario = first(deportista?.usuarios);
 
         const registros = Array.isArray(deportista?.registros_diarios)
-          ? deportista.registros_diarios
-          : [];
+  ? [...deportista.registros_diarios].sort(
+      (a: any, b: any) => b.fecha.localeCompare(a.fecha)
+    )
+  : [];
 
-        const yesterday = getYesterdayDate();
+    const recentLimitDate = getDateDaysAgo(4);
 
-        const yesterdayLoad = registros.reduce((sum: number, registro: any) => {
-          if (registro.fecha !== yesterday) return sum;
+    const recentRegisters = registros.filter(
+      (registro: any) => registro.fecha >= recentLimitDate
+    );
 
-          const training = first(registro.entrenamientos);
+    const latestRegister = recentRegisters[0];
 
-          return sum + (training?.carga_de_entrenamiento || 0);
-        }, 0);
+    const latestTraining = first(latestRegister?.entrenamientos);
 
-        const latestDiscomfortRegister = registros.find((registro: any) => {
-          const molestia = first(registro.molestias);
-          return molestia?.dolor;
-        });
+    const recentLoad = latestTraining?.carga_de_entrenamiento || 0;
 
-        const latestDiscomfort = latestDiscomfortRegister
-          ? first(latestDiscomfortRegister.molestias)
-          : null;
+    const latestDiscomfortRegister = recentRegisters
+      .slice(0, 2)
+      .find((registro: any) => {
+        const molestia = first(registro.molestias);
+        return molestia?.dolor;
+      });
+
+    const latestDiscomfort = latestDiscomfortRegister
+      ? first(latestDiscomfortRegister.molestias)
+      : null;
 
         return {
           id_deportista: deportista?.id_deportista,
           name: usuario?.nombre_apellidos || "Deportista",
-          load: yesterdayLoad,
+          load: recentLoad,
           discomfort: latestDiscomfort
             ? {
                 type: latestDiscomfort.tipo_molestia || "Molestia",
@@ -266,9 +272,9 @@ function formatDate(date: string) {
   return `${day}/${month}/${year}`;
 }
 
-function getYesterdayDate() {
+function getDateDaysAgo(days: number) {
   const date = new Date();
-  date.setDate(date.getDate() - 1);
+  date.setDate(date.getDate() - days);
 
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");

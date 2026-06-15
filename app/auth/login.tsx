@@ -10,18 +10,23 @@ import { supabase } from "../../src/lib/supabase";
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
   async function handleLogin() {
 
+    if (loading) return;
     const normalizedEmail = email.trim().toLowerCase();
+     const cleanedPassword = password.trim();
 
-    if (!normalizedEmail || !password.trim()) {
+    if (!normalizedEmail || !cleanedPassword) {
       Alert.alert(
         "Campos obligatorios",
         "Introduce correo y contraseña."
       );
       return;
     }
+
+    setLoading(true);
 
     const { data, error } = await supabase.auth.signInWithPassword({
       email: normalizedEmail,
@@ -30,6 +35,12 @@ export default function LoginScreen() {
 
     if (error || !data.user) {
       console.log("Error login:", error?.message);
+
+      Alert.alert(
+        "Error de inicio de sesión",
+        "Correo electrónico o contraseña incorrectos."
+      );
+      setLoading(false);
       return;
     }
 
@@ -48,6 +59,14 @@ export default function LoginScreen() {
 
     if (userError || !usuario) {
       console.log(userError?.message);
+
+      Alert.alert(
+        "Error",
+        "No se han podido cargar los datos del usuario."
+      );
+
+      await supabase.auth.signOut();
+      setLoading(false);
       return;
     }
 
@@ -58,23 +77,48 @@ export default function LoginScreen() {
         "Cuenta no disponible",
         "Esta cuenta no está activa. Contacta con el administrador."
       );
-
+      setLoading(false);
       return;
     }
 
-    const rol = (usuario.roles as any)?.nombre_rol;
+    const roleData = Array.isArray(usuario.roles)
+      ? usuario.roles[0]
+      : usuario.roles;
+
+    const rol = roleData?.nombre_rol;
 
     if (rol === "deportista") {
       router.replace("/athlete/dashboard");
-    } else if (rol === "entrenador") {
-      router.replace("/coach/dashboard");
-    } else if (rol === "staff_medico") {
-      router.replace("/medical-staff/dashboard");
-    } else if (rol === "admin") {
-      router.replace("/admin/dashboard");
-    } else if (rol === "superadmin") {
-      router.replace("/superadmin/dashboard" as never);
+      return;
     }
+
+    if (rol === "entrenador") {
+      router.replace("/coach/dashboard");
+      return;
+    }
+
+    if (rol === "staff_medico") {
+      router.replace("/medical-staff/dashboard");
+      return;
+    }
+
+    if (rol === "admin") {
+      router.replace("/admin/dashboard");
+      return;
+    }
+
+    if (rol === "superadmin") {
+      router.replace("/superadmin/dashboard" as never);
+      return;
+    }
+
+    Alert.alert(
+      "Rol no válido",
+      "No se ha podido identificar el perfil de esta cuenta."
+    );
+
+    await supabase.auth.signOut();
+    setLoading(false);
   }
 
   return (
@@ -98,7 +142,7 @@ export default function LoginScreen() {
           <AppInput
             label="Correo electrónico"
             value={email}
-            onChangeText={setEmail}
+            onChangeText={(value) => setEmail(value.slice(0, 100))}
             placeholder="correo@ejemplo.com"
             keyboardType="email-address"
             autoCapitalize="none"
@@ -109,7 +153,7 @@ export default function LoginScreen() {
           <AppInput
             label="Contraseña"
             value={password}
-            onChangeText={setPassword}
+            onChangeText={(value) => setPassword(value.slice(0, 100))}
             placeholder="Introduce tu contraseña"
             secureTextEntry
             autoCapitalize="none"
@@ -117,7 +161,11 @@ export default function LoginScreen() {
             maxLength={100}
           />
 
-          <AppButton title="Entrar" onPress={handleLogin} />
+          <AppButton
+            title={loading ? "Entrando..." : "Entrar"}
+            disabled={loading}
+            onPress={handleLogin}
+          />
 
           <Pressable onPress={() => router.push("/auth/register")}>
             <Text className="text-center text-sm text-gray-500 mt-5">
