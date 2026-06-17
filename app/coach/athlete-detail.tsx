@@ -541,7 +541,6 @@ export default function CoachAthleteDetailScreen() {
                           label: dayOnly(item.fecha),
                         }))}
                       height={180}
-                      curved
                       areaChart
                       initialSpacing={12}
                       endSpacing={12}
@@ -600,7 +599,6 @@ export default function CoachAthleteDetailScreen() {
                           label: dayOnly(item.fecha),
                         }))}
                       height={180}
-                      curved
                       areaChart
                       initialSpacing={12}
                       endSpacing={12}

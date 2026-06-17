@@ -82,7 +82,7 @@ export default function SuperAdminDashboard() {
 
   return (
     <SuperAdminLayout title="Superadmin">
-      <Text className="text-gray-500 mb-6">
+      <Text className="text-gray-500 mb-6 text-center">
         Panel global de gestión de ciudades, centros y administradores.
       </Text>
 

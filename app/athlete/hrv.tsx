@@ -49,17 +49,22 @@ export default function HeartRateScreen() {
       };
     });
 
+    const maxEmptyDays = 4;
     let cutIndex = 0;
+    let emptyStreak = 0;
 
-    for (let i = 0; i < days.length - 1; i++) {
-      const currentEmpty =
+    for (let i = 0; i < days.length; i++) {
+      const isEmpty =
         days[i].hrv === null && days[i].fc_reposo === null;
 
-      const nextEmpty =
-        days[i + 1].hrv === null && days[i + 1].fc_reposo === null;
+      if (isEmpty) {
+        emptyStreak++;
 
-      if (currentEmpty && nextEmpty) {
-        cutIndex = i + 2;
+        if (emptyStreak >= maxEmptyDays) {
+          cutIndex = i + 1;
+        }
+      } else {
+        emptyStreak = 0;
       }
     }
 

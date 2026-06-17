@@ -132,7 +132,7 @@ export default function PreRegisterWorker() {
 
   return (
     <AdminLayout title="Nuevo trabajador">
-      <Text className="text-gray-500 mb-6">
+      <Text className="text-gray-500 mb-6 text-center">
         Pre-registra trabajadores de tu centro para que puedan configurar sus credenciales.
       </Text>
 

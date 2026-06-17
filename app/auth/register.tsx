@@ -31,6 +31,7 @@ export default function RegisterScreen() {
 
   const [password, setPassword] = useState("");
   const [passwordCheck, setPasswordCheck] = useState("");
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     async function fetchCiudades() {
@@ -77,6 +78,8 @@ export default function RegisterScreen() {
   }, [selectedCiudad]);
 
   async function handleRegister() {
+    if (saving) return;
+
     const normalizedEmail = email.trim().toLowerCase();
     const cleanedName = fullName.trim();
 
@@ -122,6 +125,8 @@ export default function RegisterScreen() {
       return;
     }
 
+    setSaving(true);
+
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email: normalizedEmail,
       password,
@@ -132,6 +137,7 @@ export default function RegisterScreen() {
         "Error de registro",
         "No se ha podido crear la cuenta."
       );
+      setSaving(false);
       return;
     }
 
@@ -148,10 +154,14 @@ export default function RegisterScreen() {
       .single();
 
     if (!rol || !estado) {
+      await supabase.auth.signOut();
+
       Alert.alert(
         "Error",
         "No se ha podido completar el registro."
       );
+
+      setSaving(false);
       return;
     }
 
@@ -166,10 +176,14 @@ export default function RegisterScreen() {
     });
 
     if (userError) {
+      await supabase.auth.signOut();
+
       Alert.alert(
         "Error",
         "No se ha podido guardar el usuario."
       );
+
+      setSaving(false);
       return;
     }
 
@@ -178,14 +192,31 @@ export default function RegisterScreen() {
     });
 
     if (athleteError) {
+      await supabase.auth.signOut();
+
       Alert.alert(
         "Error",
         "No se ha podido crear el perfil de deportista."
       );
+
+      setSaving(false);
       return;
     }
 
-    router.replace("/athlete/dashboard");
+    await supabase.auth.signOut();
+
+    setSaving(false);
+
+    Alert.alert(
+      "Cuenta creada",
+      "Tu cuenta se ha creado correctamente. Inicia sesión para continuar.",
+      [
+        {
+          text: "Ir al login",
+          onPress: () => router.replace("/auth/login"),
+        },
+      ]
+    );
   }
 
   return (
@@ -291,7 +322,8 @@ export default function RegisterScreen() {
           />
 
           <AppButton
-            title="Registrarse"
+            title={saving ? "Creando cuenta..." : "Registrarse"}
+            disabled={saving}
             onPress={handleRegister}
           />
 

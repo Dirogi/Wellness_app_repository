@@ -151,7 +151,7 @@ export default function SuperAdminCities() {
 
   return (
     <SuperAdminLayout title="Ciudades">
-      <Text className="text-gray-500 mb-6">
+      <Text className="text-gray-500 mb-6 text-center">
         Gestiona las ciudades disponibles en el sistema.
       </Text>
 

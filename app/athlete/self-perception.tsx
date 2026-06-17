@@ -68,23 +68,25 @@ export default function SelfPerceptionScreen() {
       };
     });
 
+    const maxEmptyDays = 4;
     let cutIndex = 0;
+    let emptyStreak = 0;
 
-    for (let i = 0; i < days.length - 1; i++) {
-      const currentEmpty =
+    for (let i = 0; i < days.length; i++) {
+      const isEmpty =
         days[i].motivacion === null &&
         days[i].estres === null &&
         days[i].irritabilidad === null &&
         days[i].fatiga_general === null;
 
-      const nextEmpty =
-        days[i + 1].motivacion === null &&
-        days[i + 1].estres === null &&
-        days[i + 1].irritabilidad === null &&
-        days[i + 1].fatiga_general === null;
+      if (isEmpty) {
+        emptyStreak++;
 
-      if (currentEmpty && nextEmpty) {
-        cutIndex = i + 2;
+        if (emptyStreak >= maxEmptyDays) {
+          cutIndex = i + 1;
+        }
+      } else {
+        emptyStreak = 0;
       }
     }
 

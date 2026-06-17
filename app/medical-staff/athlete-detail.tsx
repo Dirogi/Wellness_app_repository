@@ -315,7 +315,6 @@ function fillWeeklyHeartData(data: HeartItem[]) {
                     label: dayOnly(item.fecha),
                   }))}
                   height={180}
-                  curved
                   areaChart
                   initialSpacing={12}
                   endSpacing={12}
@@ -368,7 +367,6 @@ function fillWeeklyHeartData(data: HeartItem[]) {
                     label: dayOnly(item.fecha),
                   }))}
                   height={180}
-                  curved
                   areaChart
                   initialSpacing={12}
                   endSpacing={12}

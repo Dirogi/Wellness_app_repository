@@ -318,14 +318,19 @@ export default function AthleteDashboard() {
     }
 
     function trimLeadingEmptyDays<T extends { value: number }>(data: T[]) {
+      const maxEmptyDays = 4;
       let cutIndex = 0;
+      let emptyStreak = 0;
 
-      for (let i = 0; i < data.length - 1; i++) {
-        const currentEmpty = data[i].value === 0;
-        const nextEmpty = data[i + 1].value === 0;
+      for (let i = 0; i < data.length; i++) {
+        if (data[i].value === 0) {
+          emptyStreak++;
 
-        if (currentEmpty && nextEmpty) {
-          cutIndex = i + 2;
+          if (emptyStreak >= maxEmptyDays) {
+            cutIndex = i + 1;
+          }
+        } else {
+          emptyStreak = 0;
         }
       }
 

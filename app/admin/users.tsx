@@ -235,7 +235,7 @@ export default function AdminUsers() {
 
   return (
     <AdminLayout title="Usuarios">
-      <Text className="text-gray-500 mb-6">
+      <Text className="text-gray-500 mb-6 text-center">
         Gestión de cuentas registradas en la aplicación.
       </Text>
 
