@@ -1,6 +1,12 @@
-# Wellness App 🏃‍♂️
+<p align="center">
+  <img src="docs/screenshots/icono.png" width="140" alt="Wellness App logo" />
+</p>
 
-A cross-platform application designed to support the monitoring and management of athletes' well-being, training load and recovery.
+<h1 align="center">Wellness App</h1>
+
+<p align="center">
+  A cross-platform application designed to support the monitoring and management of athletes' well-being, training load and recovery.
+</p>
 
 This project was developed as my **Final Degree Project (TFG) in Computer Engineering**. Its main goal is to provide athletes and sports professionals with a centralised platform where relevant physical, physiological and subjective data can be recorded, visualised and monitored over time.
 
